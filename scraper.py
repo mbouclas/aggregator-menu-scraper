@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 try:
     from src.common.factory import ScraperFactory
     from src.scrapers.foody_scraper import FoodyScraper
+    from src.scrapers.wolt_scraper import WoltScraper
     from src.common.logging_config import get_logger
 except ImportError as e:
     print(f"❌ Import error: {e}")
@@ -176,9 +177,11 @@ Output:
     def create_scraper(self, config, url):
         """Create the appropriate scraper instance."""
         try:
-            # For now, we only have FoodyScraper implemented
+            # Create scraper based on domain
             if config.domain == "foody.com.cy":
                 return FoodyScraper(config, url)
+            elif config.domain == "wolt.com":
+                return WoltScraper(config, url)
             else:
                 raise ValueError(f"Scraper not implemented for domain: {config.domain}")
                 
