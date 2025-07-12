@@ -244,13 +244,8 @@ Output:
     def save_results(self, results, output_path):
         """Save scraping results to JSON file."""
         try:
-            # Remove internal performance data before saving
-            results_to_save = results.copy()
-            if '_internal_performance' in results_to_save:
-                del results_to_save['_internal_performance']
-            
             with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(results_to_save, f, indent=2, ensure_ascii=False)
+                json.dump(results, f, indent=2, ensure_ascii=False)
             
             file_size = os.path.getsize(output_path)
             print(f"💾 Results saved to: {output_path}")
@@ -277,8 +272,8 @@ Output:
             print(f"   Processing time: {duration:.2f}s")
             
         # Show performance breakdown for fast mode
-        if mode == 'fast' and '_internal_performance' in results:
-            breakdown = results['_internal_performance']
+        if mode == 'fast' and 'performance_breakdown' in metadata:
+            breakdown = metadata['performance_breakdown']
             print(f"   Performance breakdown:")
             print(f"     Driver startup: {breakdown.get('driver_startup', 0):.2f}s")
             print(f"     Page loading: {breakdown.get('page_load', 0):.2f}s")
