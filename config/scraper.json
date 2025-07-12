@@ -1,0 +1,16 @@
+{
+    "workerCount": 4,
+    "sites": [
+        "https://www.foody.com.cy/delivery/leykosia/bean-bar-360-makariou",
+        "https://www.foody.com.cy/delivery/menu/caffe-nero",
+        "https://www.foody.com.cy/delivery/menu/costa-coffee",
+        "https://www.foody.com.cy/delivery/leykosia/kawacoms-ipanema-espresso-diagorou",
+        "https://www.foody.com.cy/delivery/menu/mikel-coffee-company",
+        "https://www.foody.com.cy/delivery/leykosia/overoll-croissanterie-2000406341",
+        "https://www.foody.com.cy/delivery/menu/pasta-strada",
+        "https://www.foody.com.cy/delivery/menu/starbucks",
+        "https://www.foody.com.cy/delivery/menu/second-cup",
+        "https://wolt.com/en/cyp/limassol/restaurant/kfc-engomi",
+        "https://wolt.com/en/cyp/nicosia/restaurant/wagamama-themistokli-dervi"
+    ]
+}

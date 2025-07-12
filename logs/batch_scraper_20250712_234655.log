@@ -1,0 +1,43 @@
+23:46:55 | INFO     | Loaded configuration: 11 sites, 4 workers
+23:46:55 | INFO     | [Worker 1] Starting: https://www.foody.com.cy/delivery/leykosia/bean-bar-360-makariou
+23:46:55 | INFO     | [Worker 2] Starting: https://www.foody.com.cy/delivery/menu/caffe-nero
+23:46:56 | ERROR    | [Worker 1]    Error: Traceback (most recent call last):
+  File "I:\Work\testing\AI\scraper-copilot\scraper.py", line 349, in main
+    return self.run_scraper(args.url, args.output, args.verbose)
+  File "I:\Work\testing\AI\scraper-copilot\scraper.py", line 267, in run_scraper
+    print(f"\U0001f680 Starting web scraper...")
+  File "C:\Python310\lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f680' in position 0: character maps to <undefined>
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "I:\Work\testing\AI\scraper-copilot\scraper.py", line 358, in <module>
+    success = cli.main()
+  File "I:\Work\testing\AI\scraper-copilot\scraper.py", line 352, in main
+    print(f"\u274c CLI error: {e}")
+  File "C:\Python310\lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+UnicodeEncodeError: 'charmap' codec can't encode character '\u274c' in position 0: character maps to <undefined>
+
+23:46:56 | ERROR    | [Worker 2]    Error: Traceback (most recent call last):
+  File "I:\Work\testing\AI\scraper-copilot\scraper.py", line 349, in main
+    return self.run_scraper(args.url, args.output, args.verbose)
+  File "I:\Work\testing\AI\scraper-copilot\scraper.py", line 267, in run_scraper
+    print(f"\U0001f680 Starting web scraper...")
+  File "C:\Python310\lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f680' in position 0: character maps to <undefined>
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "I:\Work\testing\AI\scraper-copilot\scraper.py", line 358, in <module>
+    success = cli.main()
+  File "I:\Work\testing\AI\scraper-copilot\scraper.py", line 352, in main
+    print(f"\u274c CLI error: {e}")
+  File "C:\Python310\lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+UnicodeEncodeError: 'charmap' codec can't encode character '\u274c' in position 0: character maps to <undefined>
+

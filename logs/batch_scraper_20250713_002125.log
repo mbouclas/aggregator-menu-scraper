@@ -1,0 +1,6 @@
+00:21:25 | INFO     | Loaded configuration: 11 sites, 4 workers
+00:21:25 | INFO     | 🚀 Processing 11 sites with 4 workers
+00:21:25 | INFO     | [Worker 1] Starting: https://www.foody.com.cy/delivery/leykosia/bean-bar-360-makariou
+00:21:25 | INFO     | [Worker 2] Starting: https://www.foody.com.cy/delivery/menu/caffe-nero
+00:21:25 | INFO     | [Worker 3] Starting: https://www.foody.com.cy/delivery/menu/costa-coffee
+00:21:25 | INFO     | [Worker 4] Starting: https://www.foody.com.cy/delivery/leykosia/kawacoms-ipanema-espresso-diagorou

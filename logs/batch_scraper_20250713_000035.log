@@ -1,0 +1,157 @@
+00:00:35 | INFO     | Loaded configuration: 11 sites, 4 workers
+00:00:35 | INFO     | 🚀 Processing 11 sites with 4 workers
+00:00:35 | INFO     | [Worker 1] Starting: https://www.foody.com.cy/delivery/leykosia/bean-bar-360-makariou
+00:00:35 | INFO     | [Worker 2] Starting: https://www.foody.com.cy/delivery/menu/caffe-nero
+00:00:35 | INFO     | [Worker 3] Starting: https://www.foody.com.cy/delivery/menu/costa-coffee
+00:00:35 | INFO     | [Worker 4] Starting: https://www.foody.com.cy/delivery/leykosia/kawacoms-ipanema-espresso-diagorou
+00:03:52 | INFO     | [Worker 4] COMPLETED: Scraped https://www.foody.com.cy/delivery/leykosia/kawacoms-ipanema-espresso-diagorou in 197.3s
+00:03:52 | INFO     | [Worker 4]    Products: 178, Categories: 22
+00:03:52 | ERROR    | [Worker 4] IMPORT FAILED: output\foody_kawacoms-ipanema-espresso.json
+00:03:52 | ERROR    | [Worker 4]    Error: 00:03:52 | INFO     | Using connection string from .env file
+00:03:52 | INFO     | Connected to PostgreSQL database
+00:03:52 | INFO     | Importing file: output\foody_kawacoms-ipanema-espresso.json
+00:03:52 | INFO     | Processing Kawacom's Ipanema Espresso from foody.com.cy
+00:03:52 | INFO     | \u2705 Imported 178 products in 22 categories
+00:03:52 | INFO     | \u2705 Successfully imported output\foody_kawacoms-ipanema-espresso.json (session: 441094b2-d2c6-4872-9b7b-d834ff97d9f2)
+00:03:52 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+00:03:52 | INFO     | Database connection closed
+
+00:03:52 | INFO     | [Worker 1] Starting: https://www.foody.com.cy/delivery/menu/mikel-coffee-company
+00:03:52 | INFO     | 📊 Progress: 1/11 sites completed (9.1%)
+00:03:52 | INFO     | [Worker 2] COMPLETED: Scraped https://www.foody.com.cy/delivery/menu/caffe-nero in 197.8s
+00:03:52 | INFO     | [Worker 2]    Products: 175, Categories: 19
+00:03:53 | ERROR    | [Worker 2] IMPORT FAILED: output\foody_caffè-nero.json
+00:03:53 | ERROR    | [Worker 2]    Error: 00:03:53 | INFO     | Using connection string from .env file
+00:03:53 | INFO     | Connected to PostgreSQL database
+00:03:53 | INFO     | Importing file: output\foody_caffè-nero.json
+00:03:53 | INFO     | Processing Caffè Nero from foody.com.cy
+00:03:53 | INFO     | \u2705 Imported 175 products in 19 categories
+00:03:53 | INFO     | \u2705 Successfully imported output\foody_caffè-nero.json (session: dd5967a4-2176-416d-a7d9-4c128fd27ae8)
+00:03:53 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+00:03:53 | INFO     | Database connection closed
+
+00:03:53 | INFO     | [Worker 2] Starting: https://www.foody.com.cy/delivery/leykosia/overoll-croissanterie-2000406341
+00:03:53 | INFO     | 📊 Progress: 2/11 sites completed (18.2%)
+00:03:53 | INFO     | [Worker 1] COMPLETED: Scraped https://www.foody.com.cy/delivery/leykosia/bean-bar-360-makariou in 198.3s
+00:03:53 | INFO     | [Worker 1]    Products: 97, Categories: 19
+00:03:53 | ERROR    | [Worker 1] IMPORT FAILED: output\foody_bean-bar.json
+00:03:53 | ERROR    | [Worker 1]    Error: 00:03:53 | INFO     | Using connection string from .env file
+00:03:53 | INFO     | Connected to PostgreSQL database
+00:03:53 | INFO     | Importing file: output\foody_bean-bar.json
+00:03:53 | INFO     | Processing Bean Bar from foody.com.cy
+00:03:53 | INFO     | \u2705 Imported 97 products in 19 categories
+00:03:53 | INFO     | \u2705 Successfully imported output\foody_bean-bar.json (session: 2b471531-1ab3-4da8-b23f-7ff233ff314c)
+00:03:53 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+00:03:53 | INFO     | Database connection closed
+
+00:03:53 | INFO     | [Worker 3] Starting: https://www.foody.com.cy/delivery/menu/pasta-strada
+00:03:53 | INFO     | 📊 Progress: 3/11 sites completed (27.3%)
+00:03:54 | INFO     | [Worker 3] COMPLETED: Scraped https://www.foody.com.cy/delivery/menu/costa-coffee in 199.4s
+00:03:54 | INFO     | [Worker 3]    Products: 138, Categories: 14
+00:03:55 | ERROR    | [Worker 3] IMPORT FAILED: output\foody_costa-coffee.json
+00:03:55 | ERROR    | [Worker 3]    Error: 00:03:55 | INFO     | Using connection string from .env file
+00:03:55 | INFO     | Connected to PostgreSQL database
+00:03:55 | INFO     | Importing file: output\foody_costa-coffee.json
+00:03:55 | INFO     | Processing Costa Coffee from foody.com.cy
+00:03:55 | INFO     | \u2705 Imported 138 products in 14 categories
+00:03:55 | INFO     | \u2705 Successfully imported output\foody_costa-coffee.json (session: d2ec3e81-aed5-4a0d-ac8c-c4bc9e3b2deb)
+00:03:55 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+00:03:55 | INFO     | Database connection closed
+
+00:03:55 | INFO     | [Worker 4] Starting: https://www.foody.com.cy/delivery/menu/starbucks
+00:03:55 | INFO     | 📊 Progress: 4/11 sites completed (36.4%)
+00:07:02 | INFO     | [Worker 1] COMPLETED: Scraped https://www.foody.com.cy/delivery/menu/mikel-coffee-company in 189.7s
+00:07:02 | INFO     | [Worker 1]    Products: 203, Categories: 14
+00:07:02 | ERROR    | [Worker 1] IMPORT FAILED: output\foody_mikel-coffee-company.json
+00:07:02 | ERROR    | [Worker 1]    Error: 00:07:02 | INFO     | Using connection string from .env file
+00:07:02 | INFO     | Connected to PostgreSQL database
+00:07:02 | INFO     | Importing file: output\foody_mikel-coffee-company.json
+00:07:02 | INFO     | Processing Mikel Coffee Company from foody.com.cy
+00:07:02 | INFO     | \u2705 Imported 203 products in 14 categories
+00:07:02 | INFO     | \u2705 Successfully imported output\foody_mikel-coffee-company.json (session: 71f4d35e-f8b4-4e4b-9a9f-a9dfbd728183)
+00:07:02 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+00:07:02 | INFO     | Database connection closed
+
+00:07:02 | INFO     | [Worker 1] Starting: https://www.foody.com.cy/delivery/menu/second-cup
+00:07:02 | INFO     | 📊 Progress: 5/11 sites completed (45.5%)
+00:07:04 | INFO     | [Worker 3] COMPLETED: Scraped https://www.foody.com.cy/delivery/menu/pasta-strada in 190.6s
+00:07:04 | INFO     | [Worker 3]    Products: 79, Categories: 17
+00:07:04 | ERROR    | [Worker 3] IMPORT FAILED: output\foody_pasta-strada.json
+00:07:04 | ERROR    | [Worker 3]    Error: 00:07:04 | INFO     | Using connection string from .env file
+00:07:04 | INFO     | Connected to PostgreSQL database
+00:07:04 | INFO     | Importing file: output\foody_pasta-strada.json
+00:07:04 | INFO     | Processing Pasta Strada from foody.com.cy
+00:07:04 | INFO     | \u2705 Imported 79 products in 17 categories
+00:07:04 | INFO     | \u2705 Successfully imported output\foody_pasta-strada.json (session: 29022a89-c56f-45a7-8982-26b394364cc7)
+00:07:04 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+00:07:04 | INFO     | Database connection closed
+
+00:07:04 | INFO     | [Worker 2] Starting: https://wolt.com/en/cyp/limassol/restaurant/kfc-engomi
+00:07:04 | INFO     | 📊 Progress: 6/11 sites completed (54.5%)
+00:07:07 | INFO     | [Worker 4] COMPLETED: Scraped https://www.foody.com.cy/delivery/menu/starbucks in 192.2s
+00:07:07 | INFO     | [Worker 4]    Products: 163, Categories: 15
+00:07:07 | INFO     | [Worker 2] COMPLETED: Scraped https://www.foody.com.cy/delivery/leykosia/overoll-croissanterie-2000406341 in 194.7s
+00:07:07 | INFO     | [Worker 2]    Products: 80, Categories: 13
+00:07:08 | ERROR    | [Worker 4] IMPORT FAILED: output\foody_starbucks.json
+00:07:08 | ERROR    | [Worker 4]    Error: 00:07:07 | INFO     | Using connection string from .env file
+00:07:07 | INFO     | Connected to PostgreSQL database
+00:07:07 | INFO     | Importing file: output\foody_starbucks.json
+00:07:07 | INFO     | Processing Starbucks from foody.com.cy
+00:07:08 | INFO     | \u2705 Imported 163 products in 15 categories
+00:07:08 | INFO     | \u2705 Successfully imported output\foody_starbucks.json (session: 540ec281-3fc4-4c27-82a5-e83fd621365a)
+00:07:08 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+00:07:08 | INFO     | Database connection closed
+
+00:07:08 | INFO     | [Worker 3] Starting: https://wolt.com/en/cyp/nicosia/restaurant/wagamama-themistokli-dervi
+00:07:08 | INFO     | 📊 Progress: 7/11 sites completed (63.6%)
+00:07:08 | ERROR    | [Worker 2] IMPORT FAILED: output\foody_overoll-croissanterie.json
+00:07:08 | ERROR    | [Worker 2]    Error: 00:07:08 | INFO     | Using connection string from .env file
+00:07:08 | INFO     | Connected to PostgreSQL database
+00:07:08 | INFO     | Importing file: output\foody_overoll-croissanterie.json
+00:07:08 | INFO     | Processing Overoll Croissanterie from foody.com.cy
+00:07:08 | INFO     | \u2705 Imported 80 products in 13 categories
+00:07:08 | INFO     | \u2705 Successfully imported output\foody_overoll-croissanterie.json (session: e534ecbb-a323-4845-a8ca-1df93048d879)
+00:07:08 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+00:07:08 | INFO     | Database connection closed
+
+00:07:08 | INFO     | 📊 Progress: 8/11 sites completed (72.7%)
+00:10:07 | INFO     | [Worker 1] COMPLETED: Scraped https://www.foody.com.cy/delivery/menu/second-cup in 184.3s
+00:10:07 | INFO     | [Worker 1]    Products: 65, Categories: 10
+00:10:07 | ERROR    | [Worker 1] IMPORT FAILED: output\foody_second-cup.json
+00:10:07 | ERROR    | [Worker 1]    Error: 00:10:07 | INFO     | Using connection string from .env file
+00:10:07 | INFO     | Connected to PostgreSQL database
+00:10:07 | INFO     | Importing file: output\foody_second-cup.json
+00:10:07 | INFO     | Processing Second Cup from foody.com.cy
+00:10:07 | INFO     | \u2705 Imported 65 products in 10 categories
+00:10:07 | INFO     | \u2705 Successfully imported output\foody_second-cup.json (session: a283aaad-6ad3-44bc-a7ce-e8d8ba534dd9)
+00:10:07 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+00:10:07 | INFO     | Database connection closed
+
+00:10:07 | INFO     | 📊 Progress: 9/11 sites completed (81.8%)
+00:10:22 | INFO     | [Worker 2] COMPLETED: Scraped https://wolt.com/en/cyp/limassol/restaurant/kfc-engomi in 197.4s
+00:10:22 | INFO     | [Worker 2]    Products: 120, Categories: 11
+00:10:22 | ERROR    | [Worker 2] IMPORT FAILED: output\wolt_kfc-engomi.json
+00:10:22 | ERROR    | [Worker 2]    Error: 00:10:22 | INFO     | Using connection string from .env file
+00:10:22 | INFO     | Connected to PostgreSQL database
+00:10:22 | INFO     | Importing file: output\wolt_kfc-engomi.json
+00:10:22 | INFO     | Processing KFC Engomi from wolt.com
+00:10:22 | INFO     | \u2705 Imported 120 products in 11 categories
+00:10:22 | INFO     | \u2705 Successfully imported output\wolt_kfc-engomi.json (session: 7be4b473-84c7-404c-9d87-e457a217fe32)
+00:10:22 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+00:10:22 | INFO     | Database connection closed
+
+00:10:22 | INFO     | 📊 Progress: 10/11 sites completed (90.9%)
+00:10:25 | INFO     | [Worker 3] COMPLETED: Scraped https://wolt.com/en/cyp/nicosia/restaurant/wagamama-themistokli-dervi in 197.4s
+00:10:25 | INFO     | [Worker 3]    Products: 95, Categories: 15
+00:10:25 | ERROR    | [Worker 3] IMPORT FAILED: output\wolt_wagamama-themistokli-dervi.json
+00:10:25 | ERROR    | [Worker 3]    Error: 00:10:25 | INFO     | Using connection string from .env file
+00:10:25 | INFO     | Connected to PostgreSQL database
+00:10:25 | INFO     | Importing file: output\wolt_wagamama-themistokli-dervi.json
+00:10:25 | INFO     | Processing Wagamama Themistokli Dervi from wolt.com
+00:10:25 | INFO     | \u2705 Imported 95 products in 15 categories
+00:10:25 | INFO     | \u2705 Successfully imported output\wolt_wagamama-themistokli-dervi.json (session: 9f3d65fd-a28f-4f68-94e3-4116b88211cf)
+00:10:25 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+00:10:25 | INFO     | Database connection closed
+
+00:10:25 | INFO     | 📊 Progress: 11/11 sites completed (100.0%)
+00:10:25 | INFO     | 🎉 All sites processed successfully!

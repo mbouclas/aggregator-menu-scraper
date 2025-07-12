@@ -90,11 +90,11 @@ class ScraperDataImporter:
                 data = json.load(f)
             
             session_id = self.import_scraper_data(data)
-            logger.info(f"✅ Successfully imported {file_path} (session: {session_id})")
+            logger.info(f"Successfully imported {file_path} (session: {session_id})")
             return session_id
             
         except Exception as e:
-            logger.error(f"❌ Failed to import {file_path}: {e}")
+            logger.error(f"Failed to import {file_path}: {e}")
             raise
     
     def import_directory(self, directory_path: str) -> List[str]:
@@ -162,7 +162,7 @@ class ScraperDataImporter:
                 self._update_scraping_session(cur, session_id, product_count, len(categories_data), len(errors), errors)
                 
                 self.conn.commit()
-                logger.info(f"✅ Imported {product_count} products in {len(categories_data)} categories")
+                logger.info(f"Imported {product_count} products in {len(categories_data)} categories")
                 return str(session_id)
                 
         except Exception as e:
@@ -496,12 +496,12 @@ def main():
         
         if args.file:
             session_id = importer.import_json_file(args.file)
-            print(f"✅ Successfully imported {args.file}")
+            print(f"Successfully imported {args.file}")
             print(f"📋 Session ID: {session_id}")
         
         elif args.directory:
             session_ids = importer.import_directory(args.directory)
-            print(f"✅ Successfully imported {len(session_ids)} files")
+            print(f"Successfully imported {len(session_ids)} files")
             print(f"📋 Session IDs: {', '.join(session_ids[:5])}" + 
                   (f" (and {len(session_ids)-5} more)" if len(session_ids) > 5 else ""))
     

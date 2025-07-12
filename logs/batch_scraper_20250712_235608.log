@@ -1,0 +1,31 @@
+23:56:08 | INFO     | Loaded configuration: 11 sites, 4 workers
+23:56:08 | INFO     | 🚀 Processing 2 sites with 4 workers
+23:56:08 | INFO     | [Worker 1] Starting: https://www.foody.com.cy/delivery/leykosia/bean-bar-360-makariou
+23:56:08 | INFO     | [Worker 2] Starting: https://www.foody.com.cy/delivery/menu/caffe-nero
+23:59:16 | INFO     | [Worker 1] COMPLETED: Scraped https://www.foody.com.cy/delivery/leykosia/bean-bar-360-makariou in 187.5s
+23:59:16 | INFO     | [Worker 1]    Products: 97, Categories: 19
+23:59:16 | ERROR    | [Worker 1] IMPORT FAILED: output\foody_bean-bar.json
+23:59:16 | ERROR    | [Worker 1]    Error: 23:59:16 | INFO     | Using connection string from .env file
+23:59:16 | INFO     | Connected to PostgreSQL database
+23:59:16 | INFO     | Importing file: output\foody_bean-bar.json
+23:59:16 | INFO     | Processing Bean Bar from foody.com.cy
+23:59:16 | INFO     | \u2705 Imported 97 products in 19 categories
+23:59:16 | INFO     | \u2705 Successfully imported output\foody_bean-bar.json (session: 8b96561d-08bd-4324-a663-bb574482c8af)
+23:59:16 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+23:59:16 | INFO     | Database connection closed
+
+23:59:16 | INFO     | 📊 Progress: 1/2 sites completed (50.0%)
+23:59:16 | INFO     | [Worker 2] COMPLETED: Scraped https://www.foody.com.cy/delivery/menu/caffe-nero in 187.8s
+23:59:16 | INFO     | [Worker 2]    Products: 165, Categories: 18
+23:59:16 | ERROR    | [Worker 2] IMPORT FAILED: output\foody_caffè-nero.json
+23:59:16 | ERROR    | [Worker 2]    Error: 23:59:16 | INFO     | Using connection string from .env file
+23:59:16 | INFO     | Connected to PostgreSQL database
+23:59:16 | INFO     | Importing file: output\foody_caffè-nero.json
+23:59:16 | INFO     | Processing Caffè Nero from foody.com.cy
+23:59:16 | INFO     | \u2705 Imported 165 products in 18 categories
+23:59:16 | INFO     | \u2705 Successfully imported output\foody_caffè-nero.json (session: f78459d7-bc06-4116-b5de-06bab62f937c)
+23:59:16 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+23:59:16 | INFO     | Database connection closed
+
+23:59:16 | INFO     | 📊 Progress: 2/2 sites completed (100.0%)
+23:59:16 | INFO     | 🎉 All sites processed successfully!

@@ -1,0 +1,17 @@
+23:53:03 | INFO     | Loaded configuration: 11 sites, 4 workers
+23:53:03 | INFO     | 🚀 Processing 1 sites with 4 workers
+23:53:03 | INFO     | [Worker 1] Starting: https://www.foody.com.cy/delivery/leykosia/bean-bar-360-makariou
+23:56:08 | INFO     | [Worker 1] COMPLETED: Scraped https://www.foody.com.cy/delivery/leykosia/bean-bar-360-makariou in 184.3s
+23:56:08 | INFO     | [Worker 1]    Products: 97, Categories: 19
+23:56:08 | ERROR    | [Worker 1] IMPORT FAILED: output\foody_bean-bar.json
+23:56:08 | ERROR    | [Worker 1]    Error: 23:56:08 | INFO     | Using connection string from .env file
+23:56:08 | INFO     | Connected to PostgreSQL database
+23:56:08 | INFO     | Importing file: output\foody_bean-bar.json
+23:56:08 | INFO     | Processing Bean Bar from foody.com.cy
+23:56:08 | INFO     | \u2705 Imported 97 products in 19 categories
+23:56:08 | INFO     | \u2705 Successfully imported output\foody_bean-bar.json (session: e0452bc7-73e7-481e-a3ad-33932a309714)
+23:56:08 | ERROR    | Import failed: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+23:56:08 | INFO     | Database connection closed
+
+23:56:08 | INFO     | 📊 Progress: 1/1 sites completed (100.0%)
+23:56:08 | INFO     | 🎉 All sites processed successfully!

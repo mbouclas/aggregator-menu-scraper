@@ -1,0 +1,8 @@
+00:16:45 | INFO     | Loaded configuration: 11 sites, 4 workers
+00:16:45 | INFO     | 🚀 Processing 1 sites with 4 workers
+00:16:45 | INFO     | [Worker 1] Starting: https://www.foody.com.cy/delivery/leykosia/bean-bar-360-makariou
+00:19:48 | INFO     | [Worker 1] COMPLETED: Scraped https://www.foody.com.cy/delivery/leykosia/bean-bar-360-makariou in 183.4s
+00:19:48 | INFO     | [Worker 1]    Products: 97, Categories: 19
+00:19:48 | INFO     | [Worker 1] IMPORTED: output\foody_bean-bar.json in 0.3s
+00:19:48 | INFO     | 📊 Progress: 1/1 sites completed (100.0%)
+00:19:48 | INFO     | 🎉 All sites processed successfully!

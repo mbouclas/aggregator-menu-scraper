@@ -32,7 +32,7 @@ try:
     from src.scrapers.wolt_scraper import WoltScraper
     from src.common.logging_config import get_logger
 except ImportError as e:
-    print(f"❌ Import error: {e}")
+    print(f"ERROR: Import error: {e}")
     print("Make sure you're running from the project root directory")
     sys.exit(1)
 
