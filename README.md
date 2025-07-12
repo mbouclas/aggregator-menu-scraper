@@ -109,6 +109,7 @@ python -m src.scrapers.wolt_scraper
 
 
 ```bash
+# Scrape any restaurant. Will decide which scraper to use automatically
 python scraper.py $url
 ```
 

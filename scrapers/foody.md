@@ -15,7 +15,7 @@
 ### Restaurant Information
 - **Restaurant Name**: wrapped in `<h1>` like `<h1 class="cc-title_58e9e8">Costa Coffee Stavrou</h1>` or `<h1 class="cc-title_58e9e8">KFC Nikis</h1>`
 - **Brand Name**: Extract from restaurant name or use same value
-- **URL Pattern**: `^https://www\.foody\.com\.cy/delivery/menu/.*`
+- **URL Pattern**: `^https://www\.foody\.com\.cy/delivery/.*`
 
 ### Product Extraction
 - **Title**: Titles look like: `<h3 class="cc-name_acd53e">Freddo Espresso Massimo</h3>` or <h3 class="cc-name_acd53e">Cold Brew with Milk Primo</h3>

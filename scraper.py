@@ -177,10 +177,12 @@ Output:
     def create_scraper(self, config, url):
         """Create the appropriate scraper instance."""
         try:
-            # Create scraper based on domain
-            if config.domain == "foody.com.cy":
+            # Create scraper based on domain - handle multiple domain variations
+            domain = config.domain.lower()
+            
+            if "foody" in domain:  # Handles foody.com.cy, foody.com, etc.
                 return FoodyScraper(config, url)
-            elif config.domain == "wolt.com":
+            elif "wolt" in domain:  # Handles wolt.com, wolt.com.cy, etc.
                 return WoltScraper(config, url)
             else:
                 raise ValueError(f"Scraper not implemented for domain: {config.domain}")
