@@ -107,6 +107,11 @@ python -m src.scrapers.wolt_scraper
 # Output saved to output/ directory as JSON
 ```
 
+
+```bash
+python scraper.py $url
+```
+
 ### 4. **Import Data to Database**
 ```bash
 # Import all JSON files
