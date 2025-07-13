@@ -880,6 +880,9 @@ class FoodyScraper(BaseScraper):
             # Extract description (if available)
             description = self._extract_product_description(product_container or title_element)
             
+            # Extract offer name (if available)
+            offer_name = self._extract_offer_name(product_container or title_element)
+            
             # Build product data structure
             product_data = {
                 "id": f"foody_prod_{product_index}",
@@ -889,6 +892,7 @@ class FoodyScraper(BaseScraper):
                 "original_price": original_price,
                 "currency": "EUR",
                 "discount_percentage": self._calculate_discount_percentage(price, original_price),
+                "offer_name": offer_name,  # Add offer name field
                 "category": category or "General",
                 "image_url": "",  # Will be enhanced later
                 "availability": True,  # Assume available if listed
@@ -1145,6 +1149,82 @@ class FoodyScraper(BaseScraper):
             self.logger.debug(f"Description extraction failed: {e}")
             return ""
     
+    def _extract_offer_name(self, container) -> str:
+        """
+        Extract offer name from foody offer elements.
+        
+        This method specifically looks for offer names in spans with class 'sn-title_522dc0'
+        that do NOT contain the '%' symbol (to distinguish from percentage discounts).
+        
+        Examples of offer names to extract:
+        - <span class="sn-title_522dc0">1+1 Deals</span>
+        - <span class="sn-title_522dc0">Foody deals</span> 
+        - <span class="sn-title_522dc0">8€ meals</span>
+        
+        Args:
+            container: Product container element
+            
+        Returns:
+            Offer name string or empty string if no offer found
+        """
+        try:
+            if not container:
+                return ""
+            
+            # Look for offer elements with the specific class from user's examples
+            offer_selectors = [
+                'span.sn-title_522dc0',  # Primary selector from user examples
+                '[class*="sn-title"]',   # Variations of the class
+                '.sn-title',             # Fallback
+                '[class*="badge"] span', # General badge spans
+                '.cc-badge span'         # Alternative badge structure
+            ]
+            
+            for selector in offer_selectors:
+                offer_elements = container.select(selector)
+                
+                for offer_element in offer_elements:
+                    offer_text = offer_element.get_text(strip=True)
+                    
+                    # Skip if empty or too short
+                    if not offer_text or len(offer_text) < 2:
+                        continue
+                    
+                    # Skip if it contains '%' symbol (these are percentage discounts, not offer names)
+                    if '%' in offer_text:
+                        continue
+                        
+                    # Skip common discount patterns that aren't offer names
+                    discount_patterns = [
+                        r'^up to\s*-?\d+%',  # "up to -37%"
+                        r'^-?\d+%\s*off',    # "37% off"
+                        r'^\d+%$',           # Just "37%"
+                        r'^€\d+',            # Just prices like "€8"
+                    ]
+                    
+                    is_discount_pattern = False
+                    for pattern in discount_patterns:
+                        if re.match(pattern, offer_text, re.IGNORECASE):
+                            is_discount_pattern = True
+                            break
+                    
+                    if is_discount_pattern:
+                        continue
+                    
+                    # Clean and validate the offer name
+                    cleaned_offer = offer_text.strip()
+                    
+                    # Ensure it's a reasonable length for an offer name
+                    if 2 <= len(cleaned_offer) <= 50:
+                        self.logger.debug(f"Found offer name: '{cleaned_offer}' with selector '{selector}'")
+                        return cleaned_offer
+            
+            return ""
+            
+        except Exception as e:
+            self.logger.debug(f"Offer name extraction failed: {e}")
+            return ""
+
     def _calculate_discount_percentage(self, current_price: float, original_price: float) -> float:
         """
         Calculate discount percentage.
@@ -1287,5 +1367,3 @@ class FoodyScraper(BaseScraper):
         # Debug logging
         for category in self._categories:
             self.logger.debug(f"Category '{category['name']}': {category['product_count']} products")
-
-    # ...existing code...

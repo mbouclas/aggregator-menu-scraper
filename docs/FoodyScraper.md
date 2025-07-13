@@ -11,6 +11,7 @@ The `FoodyScraper` class is a concrete implementation of `BaseScraper` specifica
 ✅ **Basic Structure** - Complete JSON output format matching the unified schema
 ✅ **Error Handling** - Comprehensive error tracking and logging
 ✅ **Rate Limiting** - Implements delays and retry logic for respectful scraping
+✅ **Offer Name Extraction** - Extracts named offers like "1+1 Deals", "Foody deals", "8€ meals"
 
 ⚠️  **Limited Product/Category Data** - Current implementation using requests+BeautifulSoup finds minimal product data due to JavaScript requirements
 
@@ -33,6 +34,13 @@ The `FoodyScraper` class is a concrete implementation of `BaseScraper` specifica
   - Price parsing with currency handling
   - Category name cleaning (removes numbers, normalizes whitespace)
   - HTML structure validation
+  - Offer name extraction and validation
+
+- **Offer Processing**:
+  - Extracts offer names from `<span class="sn-title_522dc0">` elements
+  - Distinguishes between percentage discounts (e.g., "40%") and named offers (e.g., "1+1 Deals")
+  - Validates offer names and filters out discount patterns
+  - Stores offer names in database for tracking promotional campaigns
 
 ### Architecture
 

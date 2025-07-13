@@ -392,6 +392,9 @@ class FastFoodyScraper(BaseScraper):
             # Fast category assignment - find nearest category header
             category = self._extract_category_fast(element)
             
+            # Fast offer name extraction
+            offer_name = self._extract_offer_name_fast(container)
+            
             # Build product with fast structure
             product = {
                 "id": f"foody_prod_{product_id}",
@@ -401,6 +404,7 @@ class FastFoodyScraper(BaseScraper):
                 "original_price": price,
                 "currency": "EUR",
                 "discount_percentage": 0.0,
+                "offer_name": offer_name,  # Add offer name field
                 "category": category,
                 "image_url": "",  # Skip images for speed
                 "availability": True,
@@ -488,6 +492,42 @@ class FastFoodyScraper(BaseScraper):
             pass
         
         return "General"
+    
+    def _extract_offer_name_fast(self, container) -> str:
+        """
+        Fast offer name extraction optimized for performance.
+        
+        Args:
+            container: Product container element
+            
+        Returns:
+            Offer name string or empty string if no offer found
+        """
+        try:
+            # Fast offer name extraction - prioritize most common selectors first
+            offer_elements = container.select('span.sn-title_522dc0') or container.select('[class*="sn-title"]')
+            
+            for offer_element in offer_elements:
+                offer_text = offer_element.get_text(strip=True)
+                
+                # Quick checks - skip if empty, too short, or contains %
+                if not offer_text or len(offer_text) < 2 or '%' in offer_text:
+                    continue
+                
+                # Quick exclusion of discount patterns 
+                if (offer_text.lower().startswith('up to') or 
+                    offer_text.lower().endswith('off') or
+                    offer_text.startswith('€')):
+                    continue
+                
+                # Valid offer name found
+                if 2 <= len(offer_text) <= 50:
+                    return offer_text
+            
+        except Exception:
+            pass  # Fail silently for performance
+        
+        return ""
     
     def scrape(self) -> Dict[str, Any]:
         """
