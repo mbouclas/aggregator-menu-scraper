@@ -219,6 +219,96 @@ class FastFoodyPlaywrightScraper(BaseScraper):
             self.logger.error(f"Error extracting categories: {e}")
             return []
     
+    def _extract_offer_name_fast(self, element) -> str:
+        """
+        Fast offer name extraction optimized for Playwright performance.
+        
+        Based on debug analysis, the structure is:
+        div.cc-wrapper_507943
+        ├── h3.cc-name_acd53e (product name) ← We start here
+        └── div.cc-priceWrapper_8d8617
+            └── span.sn-title_522dc0 (OFFER) ← We need to find this
+        
+        Args:
+            element: Product name element (h3.cc-name_acd53e)
+            
+        Returns:
+            Offer name string or empty string if no offer found
+        """
+        try:
+            # Strategy 1: Look in the immediate parent container (most likely location)
+            parent = element.evaluate("el => el.parentElement")
+            if parent:
+                # Look for priceWrapper in the same parent
+                price_wrapper = parent.query_selector('.cc-priceWrapper_8d8617')
+                if price_wrapper:
+                    offer_element = price_wrapper.query_selector('span.sn-title_522dc0')
+                    if offer_element:
+                        offer_text = fast_get_text_content(offer_element).strip()
+                        if self._is_valid_offer_name(offer_text):
+                            return offer_text
+                
+                # Fallback: look directly in parent for any offer span
+                offer_element = parent.query_selector('span.sn-title_522dc0')
+                if offer_element:
+                    offer_text = fast_get_text_content(offer_element).strip()
+                    if self._is_valid_offer_name(offer_text):
+                        return offer_text
+            
+            # Strategy 2: Look in following sibling elements
+            try:
+                next_sibling = element.evaluate("el => el.nextElementSibling")
+                if next_sibling:
+                    offer_element = next_sibling.query_selector('span.sn-title_522dc0')
+                    if offer_element:
+                        offer_text = fast_get_text_content(offer_element).strip()
+                        if self._is_valid_offer_name(offer_text):
+                            return offer_text
+            except:
+                pass
+            
+            # Strategy 3: Look in broader container (grandparent level)
+            try:
+                grandparent = element.evaluate("el => el.parentElement ? el.parentElement.parentElement : null")
+                if grandparent:
+                    offer_element = grandparent.query_selector('span.sn-title_522dc0')
+                    if offer_element:
+                        offer_text = fast_get_text_content(offer_element).strip()
+                        if self._is_valid_offer_name(offer_text):
+                            return offer_text
+            except:
+                pass
+            
+        except Exception as e:
+            pass  # Log the error but don't break scraping
+        
+        return ""
+    
+    def _is_valid_offer_name(self, offer_text: str) -> bool:
+        """
+        Check if the offer text is a valid offer name (not a percentage discount).
+        
+        Args:
+            offer_text: The offer text to validate
+            
+        Returns:
+            True if it's a valid offer name, False otherwise
+        """
+        if not offer_text or len(offer_text) < 2:
+            return False
+        
+        # Skip if it contains % symbol (these are percentage discounts)
+        if '%' in offer_text:
+            return False
+        
+        # Skip common discount patterns that aren't offer names
+        if (offer_text.lower().startswith('up to') or 
+            offer_text.lower().endswith('off')):
+            return False
+        
+        # Valid offer name if reasonable length
+        return 2 <= len(offer_text) <= 50
+
     def extract_products(self) -> List[Dict[str, Any]]:
         """Extract products using fast Playwright with optimized selectors."""
         start_time = time.time()
@@ -243,6 +333,11 @@ class FastFoodyPlaywrightScraper(BaseScraper):
                         name = fast_get_text_content(element).strip()
                         
                         if name:
+                            # Fast offer name extraction
+                            self.logger.debug(f"Extracting offer for product: '{name}'")
+                            offer_name = self._extract_offer_name_fast(element)
+                            self.logger.debug(f"Extracted offer name: '{offer_name}' for product: '{name}'")
+                            
                             product = {
                                 "id": f"foody_prod_{i + 1}",
                                 "name": name,
@@ -251,6 +346,7 @@ class FastFoodyPlaywrightScraper(BaseScraper):
                                 "original_price": 0.0,
                                 "currency": "EUR",
                                 "discount_percentage": 0.0,
+                                "offer_name": offer_name,  # Add offer name field
                                 "category": "Uncategorized",
                                 "image_url": "",
                                 "availability": True,
