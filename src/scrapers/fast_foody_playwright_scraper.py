@@ -221,93 +221,47 @@ class FastFoodyPlaywrightScraper(BaseScraper):
     
     def _extract_offer_name_fast(self, element) -> str:
         """
-        Fast offer name extraction optimized for Playwright performance.
-        
-        Based on debug analysis, the structure is:
-        div.cc-wrapper_507943
-        ├── h3.cc-name_acd53e (product name) ← We start here
-        └── div.cc-priceWrapper_8d8617
-            └── span.sn-title_522dc0 (OFFER) ← We need to find this
-        
-        Args:
-            element: Product name element (h3.cc-name_acd53e)
-            
-        Returns:
-            Offer name string or empty string if no offer found
+        Fast offer name extraction with robust error handling.
         """
         try:
-            # Strategy 1: Look in the immediate parent container (most likely location)
-            parent = element.evaluate("el => el.parentElement")
-            if parent:
-                # Look for priceWrapper in the same parent
-                price_wrapper = parent.query_selector('.cc-priceWrapper_8d8617')
-                if price_wrapper:
-                    offer_element = price_wrapper.query_selector('span.sn-title_522dc0')
-                    if offer_element:
-                        offer_text = fast_get_text_content(offer_element).strip()
-                        if self._is_valid_offer_name(offer_text):
-                            return offer_text
-                
-                # Fallback: look directly in parent for any offer span
-                offer_element = parent.query_selector('span.sn-title_522dc0')
-                if offer_element:
-                    offer_text = fast_get_text_content(offer_element).strip()
-                    if self._is_valid_offer_name(offer_text):
-                        return offer_text
+            # Direct approach - use JavaScript to find offer in the same container
+            offer_text = element.evaluate("""
+                el => {
+                    try {
+                        // Look in parent container for price wrapper
+                        if (el.parentElement) {
+                            let priceWrapper = el.parentElement.querySelector('.cc-priceWrapper_8d8617');
+                            if (priceWrapper) {
+                                let offerSpan = priceWrapper.querySelector('span.sn-title_522dc0');
+                                if (offerSpan) {
+                                    let text = offerSpan.textContent.trim();
+                                    // Validate: not empty, no %, not "up to", reasonable length
+                                    if (text && !text.includes('%') && !text.toLowerCase().startsWith('up to') && text.length >= 2 && text.length <= 50) {
+                                        return text;
+                                    }
+                                }
+                            }
+                            
+                            // Fallback: look directly in parent
+                            let directOffer = el.parentElement.querySelector('span.sn-title_522dc0');
+                            if (directOffer) {
+                                let text = directOffer.textContent.trim();
+                                if (text && !text.includes('%') && !text.toLowerCase().startsWith('up to') && text.length >= 2 && text.length <= 50) {
+                                    return text;
+                                }
+                            }
+                        }
+                        return '';
+                    } catch (e) {
+                        return '';
+                    }
+                }
+            """)
             
-            # Strategy 2: Look in following sibling elements
-            try:
-                next_sibling = element.evaluate("el => el.nextElementSibling")
-                if next_sibling:
-                    offer_element = next_sibling.query_selector('span.sn-title_522dc0')
-                    if offer_element:
-                        offer_text = fast_get_text_content(offer_element).strip()
-                        if self._is_valid_offer_name(offer_text):
-                            return offer_text
-            except:
-                pass
+            return offer_text or ""
             
-            # Strategy 3: Look in broader container (grandparent level)
-            try:
-                grandparent = element.evaluate("el => el.parentElement ? el.parentElement.parentElement : null")
-                if grandparent:
-                    offer_element = grandparent.query_selector('span.sn-title_522dc0')
-                    if offer_element:
-                        offer_text = fast_get_text_content(offer_element).strip()
-                        if self._is_valid_offer_name(offer_text):
-                            return offer_text
-            except:
-                pass
-            
-        except Exception as e:
-            pass  # Log the error but don't break scraping
-        
-        return ""
-    
-    def _is_valid_offer_name(self, offer_text: str) -> bool:
-        """
-        Check if the offer text is a valid offer name (not a percentage discount).
-        
-        Args:
-            offer_text: The offer text to validate
-            
-        Returns:
-            True if it's a valid offer name, False otherwise
-        """
-        if not offer_text or len(offer_text) < 2:
-            return False
-        
-        # Skip if it contains % symbol (these are percentage discounts)
-        if '%' in offer_text:
-            return False
-        
-        # Skip common discount patterns that aren't offer names
-        if (offer_text.lower().startswith('up to') or 
-            offer_text.lower().endswith('off')):
-            return False
-        
-        # Valid offer name if reasonable length
-        return 2 <= len(offer_text) <= 50
+        except Exception:
+            return ""
 
     def extract_products(self) -> List[Dict[str, Any]]:
         """Extract products using fast Playwright with optimized selectors."""
