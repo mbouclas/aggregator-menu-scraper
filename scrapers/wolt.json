@@ -1,0 +1,60 @@
+{
+    "domain": "wolt.com",
+    "base_url": "https://wolt.com",
+    "scraping_method": "selenium",
+    "requires_javascript": true,
+    "anti_bot_protection": "Basic rate limiting",
+    "url_pattern": "^https://wolt\\.com/.*",
+    "selectors": {
+        "restaurant": {
+            "name": "h1 span[data-test-id='venue-hero.venue-title'], h1.habto2o span[data-test-id='venue-hero.venue-title']",
+            "brand": "img[alt]:not([alt=''])",
+            "rating": ".rating, [data-test-id*='rating']",
+            "address": ".address, [data-test-id*='address']",
+            "phone": ".phone, [data-test-id*='phone']"
+        },
+        "categories": {
+            "list": "h2.h129y4wz, h2",
+            "name": "text",
+            "cleanup_patterns": [
+                "^\\d+\\.\\s*",
+                "🆕",
+                "🌶️",
+                "🍔",
+                "[^\\w\\s&-]"
+            ]
+        },
+        "products": {
+            "list": "h3[data-test-id='horizontal-item-card-header']",
+            "name": "text",
+            "description": "text",
+            "price": "[data-test-id='horizontal-item-card-discounted-price'], [data-test-id='horizontal-item-card-price']",
+            "original_price": "[data-test-id='horizontal-item-card-original-price']",
+            "image": "img",
+            "category": "preceding::h2[1]",
+            "cleanup_patterns": [
+                "^\\d+\\.\\s*",
+                "🆕",
+                "🌶️",
+                "🍔",
+                "From\\s*"
+            ]
+        }
+    },
+    "wait_conditions": {
+        "page_load": "h1 span[data-test-id='venue-hero.venue-title']",
+        "products": "h3[data-test-id='horizontal-item-card-header']",
+        "timeout": 30
+    },
+    "pagination": {
+        "enabled": false
+    },
+    "currency": "EUR",
+    "notes": [
+        "JavaScript-heavy site requiring Selenium",
+        "Products may contain emoji characters in titles",
+        "Prices may have 'From' prefix which should be ignored",
+        "Categories are h2 elements preceding product groups",
+        "Popular labels should be ignored during extraction"
+    ]
+}

@@ -222,23 +222,24 @@ Examples:
             # Start scraping
             scrape_start = time.time()
             
-            # Choose scraper based on mode
-            scraper_script = "fast_scraper.py" if use_fast_mode else "scraper.py"
-            cmd = [sys.executable, scraper_script, url]
-            
-            # Add fast mode flag if using fast_scraper but want standard mode
-            if scraper_script == "fast_scraper.py" and not use_fast_mode:
-                cmd.append("--standard")
+            # Choose scraper mode - use unified scraper.py with mode parameter
+            if use_fast_mode:
+                cmd = [sys.executable, "scraper.py", url, "--mode", "fast"]
+            else:
+                cmd = [sys.executable, "scraper.py", url, "--mode", "legacy"]
             
             env = os.environ.copy()
             env['PYTHONIOENCODING'] = 'utf-8'
+            env['PYTHONLEGACYWINDOWSSTDIO'] = '0'  # Force UTF-8 on Windows
             
             process = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 timeout=300 if use_fast_mode else 600,  # Faster timeout for fast mode
-                env=env
+                env=env,
+                encoding='utf-8',
+                errors='replace'  # Replace problematic characters instead of failing
             )
             
             scrape_duration = time.time() - scrape_start
@@ -281,13 +282,16 @@ Examples:
                     import_cmd = [sys.executable, "database/import_data.py", "--file", result.output_file]
                     env_import = os.environ.copy()
                     env_import['PYTHONIOENCODING'] = 'utf-8'
+                    env_import['PYTHONLEGACYWINDOWSSTDIO'] = '0'  # Force UTF-8 on Windows
                     
                     import_process = subprocess.run(
                         import_cmd,
                         capture_output=True,
                         text=True,
                         timeout=120,  # 2 minute timeout for import
-                        env=env_import
+                        env=env_import,
+                        encoding='utf-8',
+                        errors='replace'  # Replace problematic characters instead of failing
                     )
                     
                     import_duration = time.time() - import_start

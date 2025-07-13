@@ -2,7 +2,7 @@
 Foody.com.cy scraper implementation.
 
 This scraper extracts restaurant and menu data from foody.com.cy
-using either requests+BeautifulSoup or Selenium based on configuration.
+using either requests+BeautifulSoup or Playwright based on configuration.
 """
 import requests
 from bs4 import BeautifulSoup
@@ -14,12 +14,7 @@ from datetime import datetime, timezone
 
 from .base_scraper import BaseScraper
 
-# Import Selenium utilities for JavaScript-heavy content
-try:
-    from ..common.selenium_utils import SeleniumDriver, get_env_selenium_config
-    SELENIUM_AVAILABLE = True
-except ImportError:
-    SELENIUM_AVAILABLE = False
+# No longer need Selenium imports - Playwright is handled through base class
 
 
 class FoodyScraper(BaseScraper):
@@ -37,11 +32,11 @@ class FoodyScraper(BaseScraper):
         
         # Determine scraping method from config
         self.scraping_method = getattr(config, 'scraping_method', 'requests').lower()
-        self.requires_javascript = getattr(config, 'requires_javascript', False)
         
-        # Initialize appropriate scraper
-        if self.scraping_method == 'selenium' or self.requires_javascript:
-            self._init_selenium()
+        # If the config specifies Selenium or requires JavaScript, we now use Playwright
+        if self.scraping_method == 'selenium' or self.config.requires_javascript:
+            self.scraping_method = 'playwright'
+            self.logger.info("Using Playwright for JavaScript-enabled scraping")
         else:
             self._init_requests()
     
@@ -63,17 +58,7 @@ class FoodyScraper(BaseScraper):
         self.timeout = 30
         self.max_retries = 3
     
-    def _init_selenium(self):
-        """Initialize Selenium-based scraping."""
-        if not SELENIUM_AVAILABLE:
-            self.logger.error("Selenium not available but required by configuration")
-            raise ImportError("Selenium required but not installed. Run: pip install selenium webdriver-manager")
-        
-        # Get Selenium configuration
-        self.selenium_config = get_env_selenium_config()
-        self.selenium_driver = None
-        
-        self.logger.info(f"Initialized Selenium scraper (headless: {self.selenium_config['headless']})")
+
         
     def _fetch_page(self) -> BeautifulSoup:
         """
@@ -85,8 +70,8 @@ class FoodyScraper(BaseScraper):
         Raises:
             Exception: If page cannot be fetched after retries
         """
-        if self.scraping_method == 'selenium' or self.requires_javascript:
-            return self._fetch_page_selenium()
+        if self.scraping_method == 'playwright':
+            return self._fetch_page_playwright()
         else:
             return self._fetch_page_requests()
     
@@ -133,41 +118,47 @@ class FoodyScraper(BaseScraper):
                 self._add_error("fetch_error", str(e))
                 raise
     
-    def _fetch_page_selenium(self) -> BeautifulSoup:
+    def _fetch_page_playwright(self) -> BeautifulSoup:
         """
-        Fetch page using Selenium WebDriver.
+        Fetch page using Playwright (base class handles browser management).
         
         Returns:
             BeautifulSoup object of the parsed page
         """
-        self.logger.info(f"Fetching page with Selenium: {self.target_url}")
+        self.logger.info(f"Fetching page with Playwright: {self.target_url}")
         
         try:
-            # Create Selenium driver
-            driver = SeleniumDriver(
-                headless=self.selenium_config['headless'],
-                implicit_wait=self.selenium_config['implicit_wait'],
-                page_load_timeout=self.selenium_config['page_load_timeout']
-            )
+            # Page should already be loaded by base class
+            if not self.page:
+                self.logger.error("Playwright page not initialized")
+                # Fallback to requests
+                return self._fetch_page_requests()
             
-            with driver as selenium:
-                # Load page and wait for content
-                soup = selenium.get_page(self.target_url, wait_for_content=True, max_wait=30)
-                
-                # Scroll to load any lazy content
-                selenium.scroll_to_load_content()
-                
-                # Get final page state
-                final_soup = BeautifulSoup(selenium.driver.page_source, 'html.parser')
-                
-                self.logger.debug(f"Selenium page loaded, content length: {len(str(final_soup))}")
-                return final_soup
+            # Wait for specific foody.com.cy content to load
+            try:
+                # Wait for product content - use multiple possible selectors
+                self.wait_for_selector('h3[class*="cc-name"], [class*="menu-item"], [class*="product"]', timeout=15000)
+            except Exception as e:
+                self.logger.warning(f"Timeout waiting for product content: {e}")
+            
+            # Scroll to load any lazy-loaded content
+            self.scroll_page_to_bottom()
+            self.page.wait_for_timeout(1000)  # Give time for lazy loading
+            
+            # Get the page content
+            page_content = self.page.content()
+            
+            # Parse with BeautifulSoup
+            soup = BeautifulSoup(page_content, 'html.parser')
+            
+            self.logger.debug(f"Playwright page loaded, content length: {len(page_content)}")
+            return soup
                 
         except Exception as e:
-            self.logger.error(f"Selenium page fetch failed: {e}")
-            self._add_error("selenium_fetch_failed", f"Failed to fetch page with Selenium: {str(e)}")
+            self.logger.error(f"Playwright page fetch failed: {e}")
+            self._add_error("playwright_fetch_failed", f"Failed to fetch page with Playwright: {str(e)}")
             
-            # Fallback to requests if Selenium fails
+            # Fallback to requests if Playwright fails
             self.logger.info("Falling back to requests method")
             return self._fetch_page_requests()
     
@@ -359,17 +350,17 @@ class FoodyScraper(BaseScraper):
             # Check if page requires JavaScript (affects category availability)
             js_indicators = self._detect_javascript_requirements(soup)
             if js_indicators:
-                # Only warn if we're not using Selenium (which handles JavaScript)
-                if self.scraping_method != 'selenium':
+                # Only warn if we're not using Playwright (which handles JavaScript)
+                if self.scraping_method != 'playwright':
                     self.logger.warning(f"Page requires JavaScript for dynamic content: {js_indicators}")
                     self._add_error("javascript_required_categories", 
                                   f"Category extraction limited due to JavaScript requirements: {', '.join(js_indicators)}")
                 else:
-                    # With Selenium, just log as debug since we're handling JavaScript
-                    self.logger.debug(f"JavaScript detected (handled by Selenium): {js_indicators}")
+                    # With Playwright, just log as debug since we're handling JavaScript
+                    self.logger.debug(f"JavaScript detected (handled by Playwright): {js_indicators}")
                     # Still record as info for transparency but don't treat as error
-                    self._add_error("javascript_detected_selenium", 
-                                  f"JavaScript content detected (handled by Selenium): {', '.join(js_indicators)}")
+                    self._add_error("javascript_detected_playwright", 
+                                  f"JavaScript content detected (handled by Playwright): {', '.join(js_indicators)}")
             
             # Strategy 1: Look for h2 elements (menu sections/categories)
             categories_found = self._extract_categories_from_headings(soup)
@@ -680,17 +671,17 @@ class FoodyScraper(BaseScraper):
             # Check if page requires JavaScript (common indicators)
             js_indicators = self._detect_javascript_requirements(soup)
             if js_indicators:
-                # Only warn if we're not using Selenium (which handles JavaScript)
-                if self.scraping_method != 'selenium':
+                # Only warn if we're not using Playwright (which handles JavaScript)
+                if self.scraping_method != 'playwright':
                     self.logger.warning(f"Page appears to require JavaScript: {js_indicators}")
                     self._add_error("javascript_required", 
                                   f"Page requires JavaScript for dynamic content loading. Found indicators: {', '.join(js_indicators)}")
                 else:
-                    # With Selenium, just log as debug since we're handling JavaScript
-                    self.logger.debug(f"JavaScript detected (handled by Selenium): {js_indicators}")
-                    # Record as info but not an error since Selenium handles it
-                    self._add_error("javascript_detected_selenium", 
-                                  f"JavaScript content detected (handled by Selenium): {', '.join(js_indicators)}")
+                    # With Playwright, just log as debug since we're handling JavaScript
+                    self.logger.debug(f"JavaScript detected (handled by Playwright): {js_indicators}")
+                    # Record as info but not an error since Playwright handles it
+                    self._add_error("javascript_detected_playwright", 
+                                  f"JavaScript content detected (handled by Playwright): {', '.join(js_indicators)}")
             
             # Use specific selectors from foody.md configuration
             product_title_selectors = [
@@ -739,10 +730,10 @@ class FoodyScraper(BaseScraper):
             if not products:
                 error_msg = "Could not find products using any configured selector"
                 if js_indicators:
-                    if self.scraping_method == 'selenium':
-                        error_msg += ". Page uses JavaScript for dynamic content (Selenium is handling this, but selectors may need adjustment)"
+                    if self.scraping_method == 'playwright':
+                        error_msg += ". Page uses JavaScript for dynamic content (Playwright is handling this, but selectors may need adjustment)"
                     else:
-                        error_msg += ". Page requires JavaScript for dynamic content - consider using Selenium instead of requests+BeautifulSoup"
+                        error_msg += ". Page requires JavaScript for dynamic content - consider using Playwright instead of requests+BeautifulSoup"
                 
                 self.logger.warning(error_msg)
                 self._add_error("no_products_found", error_msg, {"javascript_required": bool(js_indicators)})

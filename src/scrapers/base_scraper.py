@@ -1,5 +1,6 @@
 """
 Base scraper class for web scraping with unified JSON output format.
+Uses Playwright for browser automation.
 """
 import json
 import os
@@ -7,9 +8,21 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any, Union
 from urllib.parse import urlparse
+from playwright.sync_api import Page, ElementHandle
 
 from ..common.config import ScraperConfig
 from ..common.logging_config import get_logger
+from ..common.playwright_utils import (
+    PlaywrightManager,
+    wait_for_element,
+    safe_find_element,
+    safe_find_elements,
+    get_text_content,
+    get_attribute,
+    wait_for_page_load,
+    scroll_to_bottom,
+    scroll_to_element
+)
 
 
 class BaseScraper(ABC):
@@ -43,6 +56,10 @@ class BaseScraper(ABC):
         self._metadata: Dict[str, Any] = {}
         self._errors: List[Dict[str, Any]] = []
         
+        # Playwright components
+        self.playwright_manager: Optional[PlaywrightManager] = None
+        self.page: Optional[Page] = None
+        
         self.logger.info(f"Initialized scraper for {config.domain} with URL: {target_url}")
     
     def scrape(self) -> Dict[str, Any]:
@@ -56,6 +73,11 @@ class BaseScraper(ABC):
         self.scraped_at = datetime.now(timezone.utc)
         
         try:
+            # Initialize Playwright if needed
+            if self.config.requires_javascript:
+                self._setup_browser()
+                self._navigate_to_page()
+            
             # Extract data using abstract methods
             self._restaurant_info = self.extract_restaurant_info()
             self._categories = self.extract_categories()
@@ -81,6 +103,9 @@ class BaseScraper(ABC):
             self.processed_at = datetime.now(timezone.utc)
             self._metadata = self._generate_metadata()
             return self._build_output()
+        finally:
+            # Clean up browser resources
+            self._cleanup_browser()
     
     @abstractmethod
     def extract_restaurant_info(self) -> Dict[str, Any]:
@@ -319,3 +344,113 @@ class BaseScraper(ABC):
             "errors_encountered": len(self._errors),
             "success": len(self._errors) == 0
         }
+    
+    def _setup_browser(self) -> None:
+        """Set up Playwright browser and page."""
+        self.logger.debug("Setting up Playwright browser")
+        self.playwright_manager = PlaywrightManager(
+            headless=self.config.extra_config.get('headless', True),
+            timeout=self.config.extra_config.get('timeout', 30000)
+        )
+        self.playwright_manager.start()
+        
+        # Create browser page
+        browser_type = self.config.extra_config.get('browser_type', 'chromium')
+        self.page = self.playwright_manager.create_driver(browser_type=browser_type)
+        
+        # Set viewport size if specified
+        if 'viewport' in self.config.extra_config:
+            self.page.set_viewport_size(self.config.extra_config['viewport'])
+        
+        self.logger.debug("Browser setup complete")
+    
+    def _navigate_to_page(self) -> None:
+        """Navigate to the target URL."""
+        if not self.page:
+            raise RuntimeError("Browser not initialized")
+        
+        max_retries = self.config.extra_config.get('max_retries', 3)
+        retry_delay = self.config.extra_config.get('retry_delay', 2)
+        
+        for attempt in range(max_retries):
+            try:
+                self.logger.debug(f"Navigating to {self.target_url} (attempt {attempt + 1})")
+                self.page.goto(self.target_url, wait_until='domcontentloaded')
+                
+                # Wait for page to fully load
+                wait_for_page_load(self.page)
+                
+                # Additional wait if specified
+                if 'page_load_wait' in self.config.extra_config:
+                    self.page.wait_for_timeout(self.config.extra_config['page_load_wait'] * 1000)
+                
+                self.logger.debug("Navigation successful")
+                return
+                
+            except Exception as e:
+                self.logger.warning(f"Navigation attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    self.page.wait_for_timeout(retry_delay * 1000)
+                else:
+                    raise
+    
+    def _cleanup_browser(self) -> None:
+        """Clean up browser resources."""
+        if self.page:
+            try:
+                self.playwright_manager.quit_driver(self.page)
+            except Exception as e:
+                self.logger.warning(f"Error closing page: {e}")
+        
+        if self.playwright_manager:
+            try:
+                self.playwright_manager.close()
+            except Exception as e:
+                self.logger.warning(f"Error closing Playwright: {e}")
+        
+        self.page = None
+        self.playwright_manager = None
+    
+    # Helper methods for subclasses to use
+    def find_element(self, selector: str) -> Optional[ElementHandle]:
+        """Find element on page using CSS selector."""
+        if not self.page:
+            self.logger.warning("Page not initialized, cannot find element")
+            return None
+        return safe_find_element(self.page, selector)
+    
+    def find_elements(self, selector: str) -> List[ElementHandle]:
+        """Find multiple elements on page using CSS selector."""
+        if not self.page:
+            self.logger.warning("Page not initialized, cannot find elements")
+            return []
+        return safe_find_elements(self.page, selector)
+    
+    def wait_for_selector(self, selector: str, timeout: int = 10000) -> Optional[ElementHandle]:
+        """Wait for element to appear on page."""
+        if not self.page:
+            self.logger.warning("Page not initialized, cannot wait for selector")
+            return None
+        try:
+            return wait_for_element(self.page, selector, timeout)
+        except Exception as e:
+            self.logger.warning(f"Failed to find selector {selector}: {e}")
+            return None
+    
+    def get_element_text(self, element: Optional[ElementHandle], default: str = "") -> str:
+        """Get text content from element."""
+        return get_text_content(element, default)
+    
+    def get_element_attribute(self, element: Optional[ElementHandle], attribute: str, default: str = "") -> str:
+        """Get attribute value from element."""
+        return get_attribute(element, attribute, default)
+    
+    def scroll_page_to_bottom(self) -> None:
+        """Scroll page to bottom."""
+        if self.page:
+            scroll_to_bottom(self.page)
+    
+    def scroll_to_element_view(self, element: Union[ElementHandle, str]) -> None:
+        """Scroll element into view."""
+        if self.page:
+            scroll_to_element(self.page, element)

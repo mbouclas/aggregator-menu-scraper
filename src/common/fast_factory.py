@@ -10,13 +10,19 @@ from .config import ScraperConfig
 from .factory import ScraperFactory
 from .logging_config import get_logger
 
-# Import fast scrapers
+# Import fast Playwright-enabled scrapers
 try:
-    from ..scrapers.fast_foody_scraper import FastFoodyScraper
+    from ..scrapers.fast_foody_playwright_scraper import FastFoodyPlaywrightScraper
+    from ..scrapers.fast_wolt_playwright_scraper import FastWoltPlaywrightScraper
     FAST_SCRAPERS_AVAILABLE = True
-    FastWoltScraper = None  # Temporarily disable Wolt fast scraper
 except ImportError as e:
-    FAST_SCRAPERS_AVAILABLE = False
+    # Fallback to legacy Selenium-based fast scrapers
+    try:
+        from ..scrapers.fast_foody_scraper import FastFoodyScraper as FastFoodyPlaywrightScraper
+        from ..scrapers.fast_wolt_scraper import FastWoltScraper as FastWoltPlaywrightScraper
+        FAST_SCRAPERS_AVAILABLE = True
+    except ImportError:
+        FAST_SCRAPERS_AVAILABLE = False
 
 logger = get_logger(__name__)
 
@@ -77,23 +83,23 @@ class FastScraperFactory(ScraperFactory):
     
     def _create_fast_scraper(self, config: ScraperConfig, url: str):
         """
-        Create a fast optimized scraper instance.
+        Create a fast optimized Playwright-enabled scraper instance.
         
         Args:
             config: Scraper configuration
             url: Target URL
             
         Returns:
-            Fast scraper instance
+            Fast Playwright scraper instance
         """
         domain = config.domain.lower()
         
-        if "foody" in domain and FastFoodyScraper:
-            return FastFoodyScraper(config, url)
-        elif "wolt" in domain and FastWoltScraper:
-            return FastWoltScraper(config, url)
+        if "foody" in domain and FAST_SCRAPERS_AVAILABLE:
+            return FastFoodyPlaywrightScraper(config, url)
+        elif "wolt" in domain and FAST_SCRAPERS_AVAILABLE:
+            return FastWoltPlaywrightScraper(config, url)
         else:
-            logger.warning(f"No fast scraper available for domain {domain}, using standard scraper")
+            logger.warning(f"No fast Playwright scraper available for domain {domain}, using standard scraper")
             return self._create_standard_scraper(config, url)
     
     def _create_standard_scraper(self, config: ScraperConfig, url: str):
@@ -131,23 +137,31 @@ class FastScraperFactory(ScraperFactory):
             String describing current performance mode
         """
         if self.enable_fast_mode and FAST_SCRAPERS_AVAILABLE:
-            return "fast_optimized"
+            return "fast_playwright_optimized"
         elif self.enable_fast_mode and not FAST_SCRAPERS_AVAILABLE:
             return "fast_unavailable_fallback"
         else:
-            return "standard"
+            return "standard_playwright"
     
     def list_supported_domains_fast(self) -> List[str]:
         """
-        List domains that support fast mode.
+        List domains that support fast Playwright mode.
         
         Returns:
-            List of domain names with fast scraper support
+            List of domain names with fast Playwright scraper support
         """
         if not FAST_SCRAPERS_AVAILABLE:
             return []
         
         fast_domains = []
+        
+        # Add domains that have fast Playwright implementations
+        fast_domains.extend([
+            "foody.com.cy",
+            "wolt.com"
+        ])
+        
+        return fast_domains
         for domain, config in self.configs.items():
             domain_lower = domain.lower()
             if "foody" in domain_lower or "wolt" in domain_lower:
@@ -227,43 +241,48 @@ def get_optimization_recommendations(url: str) -> Dict[str, str]:
     domain = urlparse(url).netloc.lower()
     
     recommendations = {
-        "performance_mode": "fast_optimized",
-        "expected_improvement": "60-75% faster",
+        "performance_mode": "fast_playwright_optimized",
+        "expected_improvement": "75-85% faster",
         "optimizations": [],
         "trade_offs": []
     }
     
     if "foody" in domain:
         recommendations["optimizations"] = [
-            "Disabled image loading",
-            "Aggressive timeouts (8s page load)",
+            "Disabled image loading (Playwright)",
+            "Disabled CSS loading (Playwright)",
+            "Aggressive timeouts (10s page load)", 
+            "Fast Playwright selectors",
             "Minimal DOM traversal",
             "Batch product processing",
-            "Fast price extraction regex"
+            "Optimized wait strategies"
         ]
         recommendations["trade_offs"] = [
             "Images not downloaded",
-            "Some styling may be missing",
-            "Reduced error tolerance"
+            "CSS styling disabled",
+            "Reduced error tolerance",
+            "Fast timeouts may miss slow content"
         ]
-        recommendations["expected_time"] = "45-60 seconds (vs 180s standard)"
+        recommendations["expected_time"] = "20-30 seconds (vs 180s standard)"
         
     elif "wolt" in domain:
         recommendations["optimizations"] = [
-            "Wolt-specific selectors",
-            "Fast data-test-id targeting",
-            "Optimized scrolling pattern",
-            "Batch processing",
-            "Minimal wait times"
+            "Fast Playwright engine",
+            "Wolt-specific data-test-id selectors",
+            "Disabled images and CSS",
+            "Optimized navigation strategy",
+            "Batch processing with minimal waits",
+            "Resource blocking for performance"
         ]
         recommendations["trade_offs"] = [
             "Less robust error handling",
-            "May miss dynamic content",
-            "Aggressive timeouts"
+            "May miss slow-loading dynamic content",
+            "Aggressive resource blocking",
+            "Reduced visual debugging capability"
         ]
-        recommendations["expected_time"] = "50-70 seconds (vs 180s standard)"
+        recommendations["expected_time"] = "25-35 seconds (vs 180s standard)"
     else:
-        recommendations["performance_mode"] = "standard"
-        recommendations["expected_improvement"] = "No fast scraper available"
+        recommendations["performance_mode"] = "standard_playwright"
+        recommendations["expected_improvement"] = "No fast Playwright scraper available"
     
     return recommendations

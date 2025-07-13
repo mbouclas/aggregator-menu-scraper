@@ -30,10 +30,9 @@ from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 try:
-    from src.common.factory import ScraperFactory
+    from src.common.fast_factory import FastScraperFactory
     from src.scrapers.foody_scraper import FoodyScraper
     from src.scrapers.wolt_scraper import WoltScraper
-    from src.scrapers.fast_foody_scraper import FastFoodyScraper
     from src.common.logging_config import get_logger
 except ImportError as e:
     print(f"ERROR: Import error: {e}")
@@ -44,7 +43,7 @@ class ScraperCLI:
     """Command-line interface for the web scraper."""
     
     def __init__(self):
-        self.factory = ScraperFactory()
+        self.factory = FastScraperFactory()
         self.logger = get_logger(__name__)
         self.output_dir = Path("output")
         self.output_dir.mkdir(exist_ok=True)
@@ -186,25 +185,15 @@ Output:
             return None
     
     def create_scraper(self, config, url, mode='fast'):
-        """Create the appropriate scraper instance."""
+        """Create the appropriate scraper instance using FastScraperFactory."""
         try:
-            # Create scraper based on domain and mode
-            domain = config.domain.lower()
-            
-            if "foody" in domain:  # Handles foody.com.cy, foody.com, etc.
-                if mode == 'fast':
-                    print(f"🚀 Using fast scraper (8x performance boost)")
-                    return FastFoodyScraper(config, url)
-                else:
-                    print(f"🐌 Using legacy scraper")
-                    return FoodyScraper(config, url)
-            elif "wolt" in domain:  # Handles wolt.com, wolt.com.cy, etc.
-                # For now, wolt only has legacy mode
-                if mode == 'fast':
-                    print(f"⚠️  Fast mode not yet available for Wolt, using legacy")
-                return WoltScraper(config, url)
+            # Use FastScraperFactory to create scrapers
+            if mode == 'fast':
+                print(f"🚀 Using fast scraper (8x performance boost)")
+                return self.factory.create_scraper(url, fast_mode=True)
             else:
-                raise ValueError(f"Scraper not implemented for domain: {config.domain}")
+                print(f"🐌 Using legacy scraper")
+                return self.factory.create_scraper(url, fast_mode=False)
                 
         except Exception as e:
             print(f"❌ Error creating scraper: {e}")

@@ -228,40 +228,88 @@ Examples:
             # Start scraping
             scrape_start = time.time()
             
-            # Run scraper.py as subprocess with UTF-8 environment
-            cmd = [sys.executable, "scraper.py", url]
-            env = os.environ.copy()
-            env['PYTHONIOENCODING'] = 'utf-8'
-            
-            process = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=600,  # 10 minute timeout per site
-                env=env
-            )
+            # Try fast mode first, fallback to legacy if it fails
+            success = False
+            for mode in ["fast", "legacy"]:
+                try:
+                    # Run scraper.py as subprocess with UTF-8 environment
+                    cmd = [sys.executable, "scraper.py", url, "--mode", mode]
+                    env = os.environ.copy()
+                    env['PYTHONIOENCODING'] = 'utf-8'
+                    env['PYTHONLEGACYWINDOWSSTDIO'] = '0'  # Force UTF-8 on Windows
+                    
+                    with self.lock:
+                        self.logger.info(f"[Worker {worker_id}] Trying {mode.upper()} mode: {url}")
+                    
+                    process = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=180 if mode == "fast" else 300,  # Shorter timeout for fast mode
+                        env=env,
+                        encoding='utf-8',
+                        errors='replace'  # Replace problematic characters instead of failing
+                    )
+                    
+                    if process.returncode == 0:
+                        success = True
+                        break
+                    else:
+                        with self.lock:
+                            self.logger.warning(f"[Worker {worker_id}] {mode.upper()} mode failed for {url}, trying next mode...")
+                        if mode == "legacy":  # Last attempt failed
+                            result.error_message = process.stderr
+                            
+                except subprocess.TimeoutExpired:
+                    with self.lock:
+                        self.logger.warning(f"[Worker {worker_id}] {mode.upper()} mode timeout for {url}, trying next mode...")
+                    if mode == "legacy":  # Last attempt timed out
+                        result.error_message = f"Both fast and legacy modes timed out"
             
             scrape_duration = time.time() - scrape_start
             result.scrape_duration = scrape_duration
             
-            if process.returncode == 0:
+            if success:
                 result.success = True
                 
-                # Try to find the output file
-                output_files = list(Path("output").glob("*.json"))
-                latest_file = max(output_files, key=lambda f: f.stat().st_mtime, default=None)
+                # Find the correct output file for this URL
+                # First try to find by URL match, then fall back to latest file
+                output_dir = Path("output")
+                correct_file = None
                 
-                if latest_file:
-                    result.output_file = str(latest_file)
+                # Get files created in the last 30 seconds
+                current_time = time.time()
+                recent_files = [
+                    f for f in output_dir.glob("*.json") 
+                    if (current_time - f.stat().st_mtime) < 30
+                ]
+                
+                # Try to find file that contains our URL
+                for file_path in recent_files:
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                            if data.get('source', {}).get('url') == url:
+                                correct_file = file_path
+                                break
+                    except (json.JSONDecodeError, FileNotFoundError):
+                        continue
+                
+                # If not found by URL, use the most recent file
+                if not correct_file and recent_files:
+                    correct_file = max(recent_files, key=lambda f: f.stat().st_mtime)
+                
+                if correct_file:
+                    result.output_file = str(correct_file)
                     
                     # Extract product/category counts from output
                     try:
-                        with open(latest_file, 'r', encoding='utf-8') as f:
+                        with open(correct_file, 'r', encoding='utf-8') as f:
                             data = json.load(f)
                             result.products_count = len(data.get('products', []))
                             result.categories_count = len(data.get('categories', []))
                     except Exception as e:
-                        self.logger.warning(f"Could not parse output file {latest_file}: {e}")
+                        self.logger.warning(f"Could not parse output file {correct_file}: {e}")
                 
                 with self.lock:
                     self.logger.info(f"[Worker {worker_id}] COMPLETED: Scraped {url} in {scrape_duration:.1f}s")
@@ -275,13 +323,16 @@ Examples:
                     import_cmd = [sys.executable, "database/import_data.py", "--file", result.output_file]
                     env_import = os.environ.copy()
                     env_import['PYTHONIOENCODING'] = 'utf-8'
+                    env_import['PYTHONLEGACYWINDOWSSTDIO'] = '0'  # Force UTF-8 on Windows
                     
                     import_process = subprocess.run(
                         import_cmd,
                         capture_output=True,
                         text=True,
                         timeout=120,  # 2 minute timeout for import
-                        env=env_import
+                        env=env_import,
+                        encoding='utf-8',
+                        errors='replace'  # Replace problematic characters instead of failing
                     )
                     
                     import_duration = time.time() - import_start
@@ -299,15 +350,10 @@ Examples:
                             if import_process.stderr:
                                 self.logger.error(f"[Worker {worker_id}]    Error: {import_process.stderr}")
             else:
-                result.error_message = process.stderr
                 with self.lock:
                     self.logger.error(f"[Worker {worker_id}] SCRAPING FAILED: {url}")
-                    self.logger.error(f"[Worker {worker_id}]    Error: {process.stderr}")
-        
-        except subprocess.TimeoutExpired:
-            result.error_message = "Scraping timeout (10 minutes)"
-            with self.lock:
-                self.logger.error(f"[Worker {worker_id}] TIMEOUT: Scraping {url}")
+                    if result.error_message:
+                        self.logger.error(f"[Worker {worker_id}]    Error: {result.error_message}")
         
         except Exception as e:
             result.error_message = str(e)
