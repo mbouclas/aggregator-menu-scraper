@@ -550,3 +550,27 @@ class FastWoltScraper(BaseScraper):
             self.logger.info(f"Fast scraper session completed in {total_session_time:.2f}s")
         
         super().cleanup()
+    
+    def _extract_offer_name_fast(self, element) -> str:
+        """
+        Fast offer name extraction for Wolt products.
+        
+        Args:
+            element: Product container element
+            
+        Returns:
+            Offer name or empty string if no offer found
+        """
+        try:
+            # Look for offer span within the product element
+            offer_span = element.select_one('span.byr4db3')
+            if offer_span:
+                offer_text = self._clean_text(offer_span.get_text())
+                # Validate: not empty, reasonable length
+                if offer_text and 3 <= len(offer_text) <= 200:
+                    return offer_text
+            
+            return ""
+            
+        except Exception:
+            return ""

@@ -583,6 +583,11 @@ class WoltScraper(BaseScraper):
             # Try to find category from nearest h2 parent
             category = self._find_product_category(title_element)
             
+            # Extract offer name for this product
+            self.logger.debug(f"Extracting offer for product: '{clean_name}'")
+            offer_name = self._extract_offer_name_wolt(product_container or title_element)
+            self.logger.debug(f"Extracted offer name: '{offer_name}' for product: '{clean_name}'")
+            
             # Create product dictionary
             product = {
                 "id": f"wolt_prod_{index}",
@@ -592,6 +597,7 @@ class WoltScraper(BaseScraper):
                 "original_price": price_info.get('original_price', price_info.get('price', 0.0)),
                 "currency": "EUR",
                 "discount_percentage": price_info.get('discount_percentage', 0.0),
+                "offer_name": offer_name,  # Add offer name field
                 "category": category,
                 "image_url": "",
                 "availability": True,
@@ -815,6 +821,7 @@ class WoltScraper(BaseScraper):
                             "original_price": price,
                             "currency": "EUR",
                             "discount_percentage": 0.0,
+                            "offer_name": "",  # No offer extraction in text-based fallback
                             "category": "Extracted",
                             "image_url": "",
                             "availability": True,
@@ -864,3 +871,27 @@ class WoltScraper(BaseScraper):
         clean_name = re.sub(r'[^\w\s-]', '', name.lower())
         clean_name = re.sub(r'\s+', '_', clean_name)
         return f"cat_{clean_name}"
+
+    def _extract_offer_name_wolt(self, product_container) -> str:
+        """
+        Extract offer name from Wolt product container.
+        
+        Args:
+            product_container: BeautifulSoup element containing the product
+            
+        Returns:
+            Offer name or empty string if no offer found
+        """
+        try:
+            # Look for offer span within the product container
+            offer_span = product_container.find('span', class_='byr4db3')
+            if offer_span:
+                offer_text = offer_span.get_text(strip=True)
+                # Validate: not empty, reasonable length
+                if offer_text and 3 <= len(offer_text) <= 200:
+                    return offer_text
+            
+            return ""
+            
+        except Exception:
+            return ""

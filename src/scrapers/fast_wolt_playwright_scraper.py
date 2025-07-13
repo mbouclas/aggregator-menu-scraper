@@ -258,6 +258,11 @@ class FastWoltPlaywrightScraper(BaseScraper):
                                 clean_name = clean_name.strip()
                                 
                                 if clean_name:
+                                    # Extract offer name for this product
+                                    self.logger.debug(f"Extracting offer for product: '{clean_name}'")
+                                    offer_name = self._extract_offer_name_wolt(element)
+                                    self.logger.debug(f"Extracted offer name: '{offer_name}' for product: '{clean_name}'")
+                                    
                                     product = {
                                         "id": f"wolt_prod_{i + 1}",
                                         "name": clean_name,
@@ -266,6 +271,7 @@ class FastWoltPlaywrightScraper(BaseScraper):
                                         "original_price": 0.0,
                                         "currency": "EUR",
                                         "discount_percentage": 0.0,
+                                        "offer_name": offer_name,  # Add offer name field
                                         "category": "Uncategorized",
                                         "image_url": "",
                                         "availability": True,
@@ -414,3 +420,39 @@ class FastWoltPlaywrightScraper(BaseScraper):
     def __del__(self):
         """Destructor to ensure cleanup."""
         self._cleanup()
+    
+    def _extract_offer_name_wolt(self, element) -> str:
+        """
+        Extract offer name from Wolt product element using Playwright.
+        
+        Args:
+            element: Playwright element of the product
+            
+        Returns:
+            Offer name or empty string if no offer found
+        """
+        try:
+            offer_text = element.evaluate("""
+                el => {
+                    try {
+                        let productCard = el.closest('[data-test-id=\"horizontal-item-card\"]') || el.closest('.horizontal-item-card');
+                        if (productCard) {
+                            let offerSpan = productCard.querySelector('span.byr4db3');
+                            if (offerSpan) {
+                                let text = offerSpan.textContent.trim();
+                                if (text && text.length >= 3 && text.length <= 200) {
+                                    return text;
+                                }
+                            }
+                        }
+                        return '';
+                    } catch (e) {
+                        return '';
+                    }
+                }
+            """)
+            
+            return offer_text or ""
+            
+        except Exception:
+            return ""
