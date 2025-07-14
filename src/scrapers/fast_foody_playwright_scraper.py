@@ -307,18 +307,84 @@ class FastFoodyPlaywrightScraper(BaseScraper):
                                 "options": []
                             }
                             
-                            # Fast price extraction from parent container
+                            # Fast price extraction with updated Foody selectors
                             try:
+                                # First try to find price in the parent container
                                 parent = element.evaluate("el => el.closest('.menu-item, .product-item, .cc-product')")
                                 if parent:
-                                    price_element = parent.query_selector('.price, .cc-price, [data-price]')
+                                    # Use the correct Foody price selectors from documentation
+                                    price_element = parent.query_selector('.cc-price_a7d252, .price, .cc-price, [data-price]')
                                     if price_element:
                                         price_text = fast_get_text_content(price_element)
-                                        price_match = re.search(r'(\d+\.?\d*)', price_text.replace(',', '.'))
+                                        # Extract price including handling "From" prefix and € symbol
+                                        price_match = re.search(r'(?:From\s+)?(\d+\.?\d*)€?', price_text.replace(',', '.'))
                                         if price_match:
                                             product["price"] = float(price_match.group(1))
                                             product["original_price"] = product["price"]
-                            except:
+                                
+                                # If no price found in parent, try searching in siblings
+                                if product["price"] == 0.0:
+                                    # Look for price in adjacent elements
+                                    price_elements = element.evaluate("""
+                                        el => {
+                                            const container = el.closest('div, li, section');
+                                            if (container) {
+                                                const priceSelectors = [
+                                                    '.cc-price_a7d252',
+                                                    '.price',
+                                                    '.cc-price',
+                                                    '[data-price]'
+                                                ];
+                                                for (const selector of priceSelectors) {
+                                                    const priceEl = container.querySelector(selector);
+                                                    if (priceEl) return priceEl.textContent;
+                                                }
+                                            }
+                                            return null;
+                                        }
+                                    """)
+                                    
+                                    if price_elements:
+                                        price_match = re.search(r'(?:From\s+)?(\d+\.?\d*)€?', price_elements.replace(',', '.'))
+                                        if price_match:
+                                            product["price"] = float(price_match.group(1))
+                                            product["original_price"] = product["price"]
+                            except Exception as e:
+                                self.logger.debug(f"Price extraction error for {name}: {e}")
+                                pass
+                            
+                            # Extract discount percentage if present
+                            try:
+                                discount_info = element.evaluate("""
+                                    el => {
+                                        const container = el.closest('div, li, section');
+                                        if (container) {
+                                            // Look for discount badge with percentage
+                                            const discountSelectors = [
+                                                '.sn-wrapper_6bd59d .sn-title_522dc0',
+                                                '.cc-badge_e1275b .sn-title_522dc0',
+                                                'span.sn-title_522dc0'
+                                            ];
+                                            for (const selector of discountSelectors) {
+                                                const discountEl = container.querySelector(selector);
+                                                if (discountEl) {
+                                                    const text = discountEl.textContent;
+                                                    const match = text.match(/(?:up to\\s+)?-?(\\d+)%/);
+                                                    if (match) {
+                                                        return parseInt(match[1]);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        return 0;
+                                    }
+                                """)
+                                
+                                if discount_info and discount_info > 0:
+                                    product["discount_percentage"] = discount_info
+                                    self.logger.debug(f"Found discount {discount_info}% for product: '{name}'")
+                            except Exception as e:
+                                self.logger.debug(f"Discount extraction error for {name}: {e}")
                                 pass
                             
                             products.append(product)

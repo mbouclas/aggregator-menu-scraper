@@ -278,9 +278,12 @@ class FastWoltPlaywrightScraper(BaseScraper):
                                         "options": []
                                     }
                                     
-                                    # Fast price extraction from parent container
+                                    # Fast price extraction with enhanced Wolt selectors and wait for dynamic content
                                     try:
-                                        parent = element.evaluate("el => el.closest('[data-test-id=\"horizontal-item-card\"], .horizontal-item-card')")
+                                        # Wait for price elements to load (Wolt loads prices dynamically)
+                                        self.page.wait_for_selector('[data-test-id*="price"], [aria-label*="€"], .price', timeout=5000)
+                                        
+                                        parent = element.evaluate("el => el.closest('[data-test-id=\"horizontal-item-card\"], .horizontal-item-card, .item-card')")
                                         if parent:
                                             # Look for discounted price first
                                             price_element = parent.query_selector('[data-test-id="horizontal-item-card-discounted-price"]')
@@ -305,14 +308,78 @@ class FastWoltPlaywrightScraper(BaseScraper):
                                                 else:
                                                     product["original_price"] = product["price"]
                                             else:
-                                                # Look for regular price
-                                                price_element = parent.query_selector('[data-test-id="horizontal-item-card-price"]')
-                                                if price_element:
-                                                    price_text = fast_get_text_content(price_element)
-                                                    price_match = re.search(r'€?(\d+\.?\d*)', price_text.replace(',', '.'))
-                                                    if price_match:
-                                                        product["price"] = float(price_match.group(1))
-                                                        product["original_price"] = product["price"]
+                                                # Look for regular price with multiple selectors
+                                                price_selectors = [
+                                                    '[data-test-id="horizontal-item-card-price"]',
+                                                    '[aria-label*="price"]',
+                                                    '.price',
+                                                    '[data-test-id*="price"]'
+                                                ]
+                                                
+                                                for selector in price_selectors:
+                                                    price_element = parent.query_selector(selector)
+                                                    if price_element:
+                                                        # Try aria-label first
+                                                        price_label = price_element.get_attribute('aria-label')
+                                                        if price_label:
+                                                            price_match = re.search(r'€?(\d+\.?\d*)', price_label.replace(',', '.'))
+                                                            if price_match:
+                                                                product["price"] = float(price_match.group(1))
+                                                                product["original_price"] = product["price"]
+                                                                break
+                                                        
+                                                        # Try text content
+                                                        price_text = fast_get_text_content(price_element)
+                                                        if price_text:
+                                                            price_match = re.search(r'€(\d+\.?\d*)', price_text.replace(',', '.'))
+                                                            if price_match:
+                                                                product["price"] = float(price_match.group(1))
+                                                                product["original_price"] = product["price"]
+                                                                break
+                                        
+                                        # If still no price, try broader search
+                                        if product["price"] == 0.0:
+                                            price_info = element.evaluate("""
+                                                el => {
+                                                    const container = el.closest('div, li, section, article');
+                                                    if (container) {
+                                                        // Look for any element with price-related attributes or content
+                                                        const pricePatterns = [
+                                                            '[data-test-id*="price"]',
+                                                            '[aria-label*="price"]',
+                                                            '[aria-label*="€"]',
+                                                            'span:has-text("€")',
+                                                            'div:has-text("€")'
+                                                        ];
+                                                        
+                                                        for (const pattern of pricePatterns) {
+                                                            try {
+                                                                const priceEl = container.querySelector(pattern);
+                                                                if (priceEl) {
+                                                                    const ariaLabel = priceEl.getAttribute('aria-label');
+                                                                    if (ariaLabel && ariaLabel.includes('€')) return ariaLabel;
+                                                                    
+                                                                    const textContent = priceEl.textContent;
+                                                                    if (textContent && textContent.includes('€')) return textContent;
+                                                                }
+                                                            } catch (e) {}
+                                                        }
+                                                        
+                                                        // Last resort: search all text for € pattern
+                                                        const allText = container.textContent || '';
+                                                        const euroMatch = allText.match(/€(\d+\.?\d*)/);
+                                                        if (euroMatch) return euroMatch[0];
+                                                    }
+                                                    return null;
+                                                }
+                                            """)
+                                            
+                                            if price_info:
+                                                price_match = re.search(r'€(\d+\.?\d*)', price_info.replace(',', '.'))
+                                                if price_match:
+                                                    product["price"] = float(price_match.group(1))
+                                                    product["original_price"] = product["price"]
+                                                    self.logger.debug(f"Found price via fallback search: €{product['price']} for {name}")
                                     except Exception as price_error:
                                         self.logger.debug(f"Error extracting price for product {i}: {price_error}")
                                         pass
