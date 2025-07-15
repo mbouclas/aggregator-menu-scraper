@@ -291,124 +291,55 @@ class ScraperDataImporter:
         return session_id
     
     def _import_categories(self, cur, restaurant_id: str, categories_data: list) -> Dict[str, str]:
-        """
-        Import categories and return name to ID mapping.
-        Optimized version that reduces duplicate creation attempts.
-        """
+        """Import categories and return name to ID mapping."""
         category_mapping = {}
-        
-        if not categories_data:
-            logger.debug("No categories data provided")
-            categories_data = []
-        
-        # Extract all category names (including 'Uncategorized')
-        category_names = [cat_data['name'] for cat_data in categories_data]
-        if 'Uncategorized' not in category_names:
-            category_names.append('Uncategorized')
-        
-        # Batch fetch existing categories for this restaurant
-        logger.debug(f"Checking existing categories for restaurant {restaurant_id}")
-        
-        if category_names:
-            # Use ANY to efficiently check multiple names at once
-            cur.execute("""
-                SELECT name, id FROM categories 
-                WHERE restaurant_id = %s AND name = ANY(%s)
-            """, (restaurant_id, category_names))
-            
-            existing_categories = {row['name']: row['id'] for row in cur.fetchall()}
-            logger.debug(f"Found {len(existing_categories)} existing categories")
-        else:
-            existing_categories = {}
-        
-        # Process each category
-        categories_to_create = []
         
         for cat_data in categories_data:
             cat_name = cat_data['name']
             
-            if cat_name in existing_categories:
-                # Category already exists
-                category_mapping[cat_name] = existing_categories[cat_name]
-                logger.debug(f"Using existing category: {cat_name}")
-            else:
-                # Need to create this category
-                category_id = str(uuid.uuid4())
-                categories_to_create.append({
-                    'id': category_id,
-                    'restaurant_id': restaurant_id,
-                    'name': cat_name,
-                    'description': cat_data.get('description', ''),
-                    'display_order': cat_data.get('display_order', 0),
-                    'source': cat_data.get('source', 'scraper')
-                })
-                category_mapping[cat_name] = category_id
-        
-        # Handle 'Uncategorized' category
-        if 'Uncategorized' not in existing_categories:
-            uncategorized_id = str(uuid.uuid4())
-            categories_to_create.append({
-                'id': uncategorized_id,
-                'restaurant_id': restaurant_id,
-                'name': 'Uncategorized',
-                'description': 'Products without specific category',
-                'display_order': 999,
-                'source': 'fallback'
-            })
-            category_mapping['Uncategorized'] = uncategorized_id
-        else:
-            category_mapping['Uncategorized'] = existing_categories['Uncategorized']
-        
-        # Batch create new categories using ON CONFLICT for safety
-        if categories_to_create:
-            logger.info(f"Creating {len(categories_to_create)} new categories")
+            # Check if category exists
+            cur.execute("SELECT id FROM categories WHERE restaurant_id = %s AND name = %s", 
+                       (restaurant_id, cat_name))
+            result = cur.fetchone()
             
-            for cat in categories_to_create:
-                try:
-                    cur.execute("""
-                        INSERT INTO categories (id, restaurant_id, name, description, display_order, source)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (restaurant_id, name) DO NOTHING
-                    """, (
-                        cat['id'], cat['restaurant_id'], cat['name'],
-                        cat['description'], cat['display_order'], cat['source']
-                    ))
-                    
-                    # Check if the insert actually happened or if there was a conflict
-                    if cur.rowcount == 0:
-                        # Conflict occurred, get the existing ID
-                        logger.warning(f"Category '{cat['name']}' already exists (conflict), fetching existing ID")
-                        cur.execute("""
-                            SELECT id FROM categories 
-                            WHERE restaurant_id = %s AND name = %s
-                        """, (cat['restaurant_id'], cat['name']))
-                        result = cur.fetchone()
-                        if result:
-                            category_mapping[cat['name']] = result['id']
-                        else:
-                            logger.error(f"Failed to find existing category '{cat['name']}' after conflict")
-                    else:
-                        logger.debug(f"Successfully created category: {cat['name']}")
-                        
-                except psycopg2.Error as e:
-                    logger.error(f"Error creating category '{cat['name']}': {e}")
-                    # Try to get existing category as fallback
-                    try:
-                        cur.execute("""
-                            SELECT id FROM categories 
-                            WHERE restaurant_id = %s AND name = %s
-                        """, (cat['restaurant_id'], cat['name']))
-                        result = cur.fetchone()
-                        if result:
-                            category_mapping[cat['name']] = result['id']
-                            logger.warning(f"Using existing category after error: {cat['name']}")
-                    except psycopg2.Error:
-                        logger.error(f"Could not recover from category creation error for '{cat['name']}'")
-                        raise
+            if result:
+                category_mapping[cat_name] = result['id']
+                continue
+            
+            # Create new category
+            category_id = str(uuid.uuid4())
+            
+            cur.execute("""
+                INSERT INTO categories (id, restaurant_id, name, description, display_order, source)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (
+                category_id, restaurant_id, cat_name,
+                cat_data.get('description', ''),
+                cat_data.get('display_order', 0),
+                cat_data.get('source', 'unknown')
+            ))
+            
+            category_mapping[cat_name] = category_id
+        
+        # Add "Uncategorized" if not present
+        if 'Uncategorized' not in category_mapping:
+            cur.execute("SELECT id FROM categories WHERE restaurant_id = %s AND name = %s", 
+                       (restaurant_id, 'Uncategorized'))
+            result = cur.fetchone()
+            
+            if not result:
+                uncategorized_id = str(uuid.uuid4())
+                cur.execute("""
+                    INSERT INTO categories (id, restaurant_id, name, description, display_order, source)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (uncategorized_id, restaurant_id, 'Uncategorized', 'Products without specific category', 999, 'fallback'))
+                category_mapping['Uncategorized'] = uncategorized_id
+            else:
+                category_mapping['Uncategorized'] = result['id']
         
         logger.debug(f"Processed {len(category_mapping)} categories")
         return category_mapping
-
+    
     def _import_offers(self, cur, restaurant_id: str, products_data: list, scraped_at: str) -> Dict[str, str]:
         """Extract unique offers from products and create offer records. Returns offer_name -> offer_id mapping."""
         offers_seen = set()
@@ -689,62 +620,21 @@ class ScraperDataImporter:
     
     def _ensure_product(self, cur, restaurant_id: str, category_mapping: Dict[str, str],
                        product_data: Dict[str, Any]) -> str:
-        """
-        Ensure product exists and return its ID.
-        Enhanced version that prevents duplicates by checking product names.
-        """
+        """Ensure product exists and return its ID."""
         external_id = product_data['id']
-        product_name = product_data['name']
         category_name = product_data.get('category', 'Uncategorized')
         category_id = category_mapping.get(category_name, category_mapping.get('Uncategorized'))
         
         if not category_id:
             raise ValueError(f"Category '{category_name}' not found and no Uncategorized fallback")
         
-        # Step 1: Try to find by external_id (if provided)
-        if external_id:
-            cur.execute("SELECT id, name FROM products WHERE restaurant_id = %s AND external_id = %s", 
-                       (restaurant_id, external_id))
-            result = cur.fetchone()
-            
-            if result:
-                # Found by external_id, check if name changed
-                if result['name'] != product_name:
-                    logger.info(f"Product name changed: '{result['name']}' → '{product_name}' (external_id: {external_id})")
-                    # Update the name
-                    cur.execute("UPDATE products SET name = %s, updated_at = NOW() WHERE id = %s",
-                               (product_name, result['id']))
-                return result['id']
+        cur.execute("SELECT id FROM products WHERE restaurant_id = %s AND external_id = %s", 
+                   (restaurant_id, external_id))
+        result = cur.fetchone()
         
-        # Step 2: Check for existing product with same name (prevent duplicates)
-        cur.execute("SELECT id, external_id FROM products WHERE restaurant_id = %s AND name = %s", 
-                   (restaurant_id, product_name))
-        existing_by_name = cur.fetchall()
+        if result:
+            return result['id']
         
-        if existing_by_name:
-            # Found product(s) with same name
-            if len(existing_by_name) == 1:
-                existing_product = existing_by_name[0]
-                existing_external_id = existing_product['external_id']
-                
-                if external_id and existing_external_id and existing_external_id != external_id:
-                    # Same name, different external_id - update external_id
-                    logger.info(f"Updating external_id: '{existing_external_id}' → '{external_id}' for product '{product_name}'")
-                    cur.execute("UPDATE products SET external_id = %s, updated_at = NOW() WHERE id = %s",
-                               (external_id, existing_product['id']))
-                elif external_id and not existing_external_id:
-                    # Same name, existing has NULL external_id - set external_id
-                    logger.info(f"Setting external_id: NULL → '{external_id}' for product '{product_name}'")
-                    cur.execute("UPDATE products SET external_id = %s, updated_at = NOW() WHERE id = %s",
-                               (external_id, existing_product['id']))
-                
-                return existing_product['id']
-            else:
-                # Multiple products with same name - this should not happen with proper uniqueness
-                logger.warning(f"Found {len(existing_by_name)} products with name '{product_name}' - using first one")
-                return existing_by_name[0]['id']
-        
-        # Step 3: No existing product found - create new one
         product_id = str(uuid.uuid4())
         options = product_data.get('options', [])
         if isinstance(options, str):
@@ -753,8 +643,6 @@ class ScraperDataImporter:
             except:
                 options = []
         
-        logger.info(f"Creating new product: '{product_name}' (external_id: {external_id})")
-        
         cur.execute("""
             INSERT INTO products (
                 id, restaurant_id, category_id, external_id, name, description,
@@ -762,7 +650,7 @@ class ScraperDataImporter:
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             product_id, restaurant_id, category_id, external_id,
-            product_name, 
+            product_data['name'], 
             product_data.get('description', ''),
             product_data.get('image_url', ''),
             json.dumps(options)

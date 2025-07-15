@@ -7,3 +7,4 @@ database/.env
 __pycache__/
 .pytest_cache/
 logs/*
+*.log
