@@ -149,15 +149,18 @@ class ScraperDataImporter:
                 # 5. Import categories
                 category_mapping = self._import_categories(cur, restaurant_id, categories_data)
                 
-                # 6. Import products and prices
+                # 6. Extract and import offers
+                offer_mapping = self._import_offers(cur, restaurant_id, products_data, metadata['scraped_at'])
+                
+                # 7. Import products and prices (with offer links)
                 product_count = self._import_products_and_prices(
-                    cur, restaurant_id, category_mapping, products_data, metadata['scraped_at']
+                    cur, restaurant_id, category_mapping, products_data, metadata['scraped_at'], offer_mapping
                 )
                 
-                # 7. Create restaurant snapshot
+                # 8. Create restaurant snapshot
                 self._create_restaurant_snapshot(cur, restaurant_id, domain_id, restaurant_data, metadata)
                 
-                # 8. Update session with final counts
+                # 9. Update session with final counts
                 errors = json_data.get('errors', [])
                 self._update_scraping_session(cur, session_id, product_count, len(categories_data), len(errors), errors)
                 
@@ -337,9 +340,77 @@ class ScraperDataImporter:
         logger.debug(f"Processed {len(category_mapping)} categories")
         return category_mapping
     
+    def _import_offers(self, cur, restaurant_id: str, products_data: list, scraped_at: str) -> Dict[str, str]:
+        """Extract unique offers from products and create offer records. Returns offer_name -> offer_id mapping."""
+        offers_seen = set()
+        offer_mapping = {}  # offer_name -> offer_id
+        
+        # Extract unique offers from products
+        for product in products_data:
+            offer_name = product.get('offer_name', '').strip()
+            discount_pct = float(product.get('discount_percentage', 0))
+            
+            if offer_name and offer_name not in offers_seen:
+                offers_seen.add(offer_name)
+                
+                # Create offer record
+                offer_id = self._ensure_offer(
+                    cur=cur,
+                    restaurant_id=restaurant_id,
+                    offer_name=offer_name,
+                    discount_percentage=discount_pct,
+                    scraped_at=scraped_at
+                )
+                offer_mapping[offer_name] = offer_id
+                
+        logger.debug(f"Processed {len(offer_mapping)} unique offers")
+        return offer_mapping
+    
+    def _ensure_offer(self, cur, restaurant_id: str, offer_name: str, 
+                     discount_percentage: float, scraped_at: str) -> str:
+        """Ensure offer exists and return its ID."""
+        
+        # Check if offer already exists for this restaurant
+        cur.execute("""
+            SELECT id FROM offers 
+            WHERE restaurant_id = %s AND name = %s AND is_active = true
+        """, (restaurant_id, offer_name))
+        
+        existing = cur.fetchone()
+        if existing:
+            return existing['id']
+        
+        # Create new offer
+        offer_id = str(uuid.uuid4())
+        
+        # Determine offer type based on discount percentage
+        offer_type = 'percentage' if discount_percentage > 0 else 'other'
+        
+        cur.execute("""
+            INSERT INTO offers (
+                id, restaurant_id, name, offer_type, discount_percentage, 
+                start_date, is_active, created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            offer_id,
+            restaurant_id,
+            offer_name,
+            offer_type,
+            discount_percentage if discount_percentage > 0 else None,
+            scraped_at,  # Use first seen as start_date
+            True,
+            scraped_at
+        ))
+        
+        logger.debug(f"Created new offer: {offer_name} ({discount_percentage}% discount)")
+        return offer_id
+    
     def _import_products_and_prices(self, cur, restaurant_id: str, category_mapping: Dict[str, str],
-                                  products_data: list, scraped_at: str) -> int:
-        """Import products and their current prices."""
+                                  products_data: list, scraped_at: str, offer_mapping: Optional[Dict[str, str]] = None) -> int:
+        """Import products and their current prices, linking to offers where applicable."""
+        if offer_mapping is None:
+            offer_mapping = {}
+            
         imported_count = 0
         
         for product_data in products_data:
@@ -352,12 +423,16 @@ class ScraperDataImporter:
                 # Get or create product
                 product_id = self._ensure_product(cur, restaurant_id, category_mapping, product_data)
                 
-                # Add price record
+                # Get offer_id if product has an offer
+                offer_name = product_data.get('offer_name', '').strip()
+                offer_id = offer_mapping.get(offer_name) if offer_name else None
+                
+                # Add price record with offer link
                 cur.execute("""
                     INSERT INTO product_prices (
                         product_id, price, original_price, currency, discount_percentage,
-                        offer_name, availability, scraped_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        offer_id, offer_name, availability, scraped_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (product_id, scraped_at) DO NOTHING
                 """, (
                     product_id,
@@ -365,7 +440,8 @@ class ScraperDataImporter:
                     float(product_data.get('original_price', 0)),
                     product_data.get('currency', 'EUR'),
                     float(product_data.get('discount_percentage', 0)),
-                    product_data.get('offer_name'),  # Future field
+                    offer_id,  # Link to offer record
+                    offer_name if offer_name else None,  # Keep offer name for reference
                     product_data.get('availability', True),
                     scraped_at
                 ))
