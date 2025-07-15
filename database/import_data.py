@@ -350,18 +350,32 @@ class ScraperDataImporter:
             offer_name = product.get('offer_name', '').strip()
             discount_pct = float(product.get('discount_percentage', 0))
             
-            if offer_name and offer_name not in offers_seen:
-                offers_seen.add(offer_name)
-                
-                # Create offer record
-                offer_id = self._ensure_offer(
-                    cur=cur,
-                    restaurant_id=restaurant_id,
-                    offer_name=offer_name,
-                    discount_percentage=discount_pct,
-                    scraped_at=scraped_at
-                )
-                offer_mapping[offer_name] = offer_id
+            # Pattern 1: Explicit offer name (even with 0% discount)
+            if offer_name:
+                if offer_name not in offers_seen:
+                    offers_seen.add(offer_name)
+                    offer_id = self._ensure_offer(
+                        cur=cur,
+                        restaurant_id=restaurant_id,
+                        offer_name=offer_name,
+                        discount_percentage=discount_pct,
+                        scraped_at=scraped_at
+                    )
+                    offer_mapping[offer_name] = offer_id
+            
+            # Pattern 2: Discount percentage without offer name (auto-generate offer name)
+            elif discount_pct > 0:
+                auto_offer_name = f"{int(discount_pct)}% Discount"
+                if auto_offer_name not in offers_seen:
+                    offers_seen.add(auto_offer_name)
+                    offer_id = self._ensure_offer(
+                        cur=cur,
+                        restaurant_id=restaurant_id,
+                        offer_name=auto_offer_name,
+                        discount_percentage=discount_pct,
+                        scraped_at=scraped_at
+                    )
+                    offer_mapping[auto_offer_name] = offer_id
                 
         logger.debug(f"Processed {len(offer_mapping)} unique offers")
         return offer_mapping
@@ -383,20 +397,27 @@ class ScraperDataImporter:
         # Create new offer
         offer_id = str(uuid.uuid4())
         
-        # Determine offer type based on discount percentage
-        offer_type = 'percentage' if discount_percentage > 0 else 'other'
+        # Determine offer type and discount amount based on discount percentage
+        if discount_percentage > 0:
+            offer_type = 'percentage'
+            # Note: discount_amount will be calculated per product since it depends on individual prices
+            discount_amount = None
+        else:
+            offer_type = 'other'
+            discount_amount = None
         
         cur.execute("""
             INSERT INTO offers (
                 id, restaurant_id, name, offer_type, discount_percentage, 
-                start_date, is_active, created_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                discount_amount, start_date, is_active, created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             offer_id,
             restaurant_id,
             offer_name,
             offer_type,
             discount_percentage if discount_percentage > 0 else None,
+            discount_amount,  # Individual amounts calculated per product
             scraped_at,  # Use first seen as start_date
             True,
             scraped_at
@@ -423,11 +444,39 @@ class ScraperDataImporter:
                 # Get or create product
                 product_id = self._ensure_product(cur, restaurant_id, category_mapping, product_data)
                 
-                # Get offer_id if product has an offer
+                # Get offer_id for product (handle both explicit and auto-generated offers)
                 offer_name = product_data.get('offer_name', '').strip()
-                offer_id = offer_mapping.get(offer_name) if offer_name else None
+                discount_pct = float(product_data.get('discount_percentage', 0))
+                offer_id = None
+                final_offer_name = None
                 
-                # Add price record with offer link
+                if offer_name:
+                    # Explicit offer name
+                    offer_id = offer_mapping.get(offer_name)
+                    final_offer_name = offer_name
+                elif discount_pct > 0:
+                    # Auto-generated offer name
+                    auto_offer_name = f"{int(discount_pct)}% Discount"
+                    offer_id = offer_mapping.get(auto_offer_name)
+                    final_offer_name = auto_offer_name
+                
+                # Calculate correct original price if discount exists but original_price = price
+                price = float(product_data.get('price', 0))
+                original_price = float(product_data.get('original_price', 0))
+                
+                # Fix original price calculation when price = original but discount exists
+                if discount_pct > 0 and price == original_price:
+                    # Calculate what original price should be: price = original * (1 - discount/100)
+                    # So: original = price / (1 - discount/100)
+                    calculated_original = price / (1 - discount_pct/100)
+                    original_price = round(calculated_original, 2)
+                    logger.debug(f"Corrected original price for {product_data.get('name', 'unknown')}: "
+                               f"€{price} -> €{original_price} ({discount_pct}% discount)")
+                
+                # Calculate discount amount
+                discount_amount = original_price - price if original_price > price else None
+                
+                # Add price record with offer link and corrected calculations
                 cur.execute("""
                     INSERT INTO product_prices (
                         product_id, price, original_price, currency, discount_percentage,
@@ -436,12 +485,12 @@ class ScraperDataImporter:
                     ON CONFLICT (product_id, scraped_at) DO NOTHING
                 """, (
                     product_id,
-                    float(product_data.get('price', 0)),
-                    float(product_data.get('original_price', 0)),
+                    price,
+                    original_price,  # Use corrected original price
                     product_data.get('currency', 'EUR'),
-                    float(product_data.get('discount_percentage', 0)),
-                    offer_id,  # Link to offer record
-                    offer_name if offer_name else None,  # Keep offer name for reference
+                    discount_pct,
+                    offer_id,  # Link to offer record (explicit or auto-generated)
+                    final_offer_name,  # Use final offer name (explicit or auto-generated)
                     product_data.get('availability', True),
                     scraped_at
                 ))

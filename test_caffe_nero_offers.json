@@ -1,0 +1,103 @@
+{
+  "metadata": {
+    "scraper_version": "1.0.0",
+    "domain": "foody.com.cy",
+    "scraped_at": "2025-07-15T12:13:22.850846",
+    "processing_duration_seconds": 1.0,
+    "product_count": 5,
+    "category_count": 1
+  },
+  "source": {
+    "url": "https://foody.com.cy/test",
+    "scraping_method": "test"
+  },
+  "restaurant": {
+    "name": "Test Caff\u00e8 Nero",
+    "brand": "Caff\u00e8 Nero",
+    "rating": 4.5,
+    "delivery_fee": 2.5,
+    "minimum_order": 10.0,
+    "delivery_time": "30-40 min"
+  },
+  "categories": [
+    {
+      "name": "Test Offers",
+      "description": "Products with offers",
+      "display_order": 1,
+      "source": "test"
+    }
+  ],
+  "products": [
+    {
+      "id": "test_prod_1",
+      "name": "25% Discount on Coffee Classics",
+      "description": "Product: 25% Discount on Coffee Classics",
+      "price": 2.51,
+      "original_price": 2.51,
+      "currency": "EUR",
+      "discount_percentage": 25,
+      "offer_name": "",
+      "category": "Test Offers",
+      "image_url": "",
+      "availability": true,
+      "options": []
+    },
+    {
+      "id": "test_prod_2",
+      "name": "Lunch Box Combo \u20ac6.90",
+      "description": "Product: Lunch Box Combo \u20ac6.90",
+      "price": 6.9,
+      "original_price": 6.9,
+      "currency": "EUR",
+      "discount_percentage": 0.0,
+      "offer_name": "Foody deals",
+      "category": "Test Offers",
+      "image_url": "",
+      "availability": true,
+      "options": []
+    },
+    {
+      "id": "test_prod_3",
+      "name": "Dessert Combo \u20ac6.50",
+      "description": "Product: Dessert Combo \u20ac6.50",
+      "price": 6.5,
+      "original_price": 6.5,
+      "currency": "EUR",
+      "discount_percentage": 32,
+      "offer_name": "",
+      "category": "Test Offers",
+      "image_url": "",
+      "availability": true,
+      "options": []
+    },
+    {
+      "id": "test_prod_4",
+      "name": "Office Bundle for 3: 2+1 Coffee",
+      "description": "Product: Office Bundle for 3: 2+1 Coffee",
+      "price": 6.8,
+      "original_price": 6.8,
+      "currency": "EUR",
+      "discount_percentage": 33,
+      "offer_name": "",
+      "category": "Test Offers",
+      "image_url": "",
+      "availability": true,
+      "options": []
+    },
+    {
+      "id": "test_prod_5",
+      "name": "Combo for 2 \u20ac8.00",
+      "description": "Product: Combo for 2 \u20ac8.00",
+      "price": 8.0,
+      "original_price": 8.0,
+      "currency": "EUR",
+      "discount_percentage": 0.0,
+      "offer_name": "Foody deals",
+      "category": "Test Offers",
+      "image_url": "",
+      "availability": true,
+      "options": []
+    }
+  ],
+  "errors": []
+}
