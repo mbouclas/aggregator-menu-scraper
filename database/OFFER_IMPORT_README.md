@@ -6,9 +6,17 @@ This implementation adds comprehensive offer management to the scraper database 
 
 ### 1. Enhanced Data Import (`import_data.py`)
 - **Automatic offer extraction** from scraped product data
+- **Handles two offer patterns**: explicit offer names and discount percentages
+- **Auto-generates offer names** for products with discount_percentage > 0
+- **Corrects price calculations** when original_price = price despite discounts
 - **Links products to offers** via `offer_id` foreign key
-- **Creates unique offer records** in the `offers` table
-- **Processes discount percentages** and offer names
+- **Processes discount percentages** and calculates proper discount amounts
+
+### 2. Fixed Discount Calculations
+- **Detects incorrect data**: When price = original_price but discount_percentage > 0
+- **Calculates correct original price**: `original = price / (1 - discount/100)`
+- **Computes discount amounts**: `discount_amount = original_price - price`
+- **Example**: €2.51 price with 25% discount → €3.35 original price (€0.84 savings)
 
 ### 2. Migration Script (`migrate_existing_offers.py`)
 - **Processes existing JSON files** to extract historical offers
@@ -68,9 +76,13 @@ Scraped JSON → Extract Offers → Create Offer Records → Link to Products
 
 ### Offer Extraction Logic
 1. **Scan all products** for `offer_name` and `discount_percentage`
-2. **Create unique offers** based on offer name per restaurant
-3. **Link products** to offers via `offer_id` foreign key
-4. **Set offer metadata**: type, discount percentage, start date
+2. **Pattern 1**: Products with explicit `offer_name` (even if discount = 0%)
+3. **Pattern 2**: Products with `discount_percentage > 0` but no offer name
+   - Auto-generates offer names like "25% Discount"
+4. **Create unique offers** based on offer name per restaurant
+5. **Correct price calculations** when original_price = discounted_price
+6. **Link products** to offers via `offer_id` foreign key
+7. **Calculate discount amounts** for proper savings tracking
 
 ### Example Transformation
 **Input (JSON):**
