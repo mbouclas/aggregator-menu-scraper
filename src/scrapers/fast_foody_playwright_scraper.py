@@ -183,31 +183,83 @@ class FastFoodyPlaywrightScraper(BaseScraper):
             
             categories = []
             
-            # Fast category extraction
+            # Fast category extraction using proper Foody structure
             category_selectors = [
-                '.category-item',
-                '[data-testid="category"]',
-                '.menu-category',
-                'h2, h3, h4'
+                'h2',  # Main category headers as per config
             ]
             
-            for selector in category_selectors:
-                elements = fast_find_elements(self.page, selector)
-                if elements:
-                    for i, element in enumerate(elements):
-                        text = fast_get_text_content(element).strip()
-                        if text and len(text) > 2:  # Valid category name
-                            category_id = f"cat_{text.lower().replace(' ', '_').replace('&', 'and')}"
-                            category = {
-                                "id": category_id,
-                                "name": text,
-                                "description": f"{text.upper()} items and products",
-                                "product_count": 0,
-                                "source": "heading",
-                                "display_order": i
+            # First, try to find the Categories list structure
+            categories_header = None
+            try:
+                headers = fast_find_elements(self.page, 'h2')
+                for header in headers:
+                    text = fast_get_text_content(header).strip()
+                    if text.lower() == 'categories':
+                        categories_header = header
+                        break
+            except:
+                pass
+            
+            # If we found the Categories header, extract from the following ul
+            if categories_header:
+                try:
+                    # Look for ul element following the Categories h2
+                    ul_element = categories_header.evaluate("""
+                        el => {
+                            let sibling = el.nextElementSibling;
+                            while (sibling && sibling.tagName !== 'UL') {
+                                sibling = sibling.nextElementSibling;
                             }
-                            categories.append(category)
-                    break
+                            return sibling;
+                        }
+                    """)
+                    
+                    if ul_element:
+                        # Extract li elements from the ul
+                        li_elements = fast_find_elements(ul_element, 'li')
+                        for i, li in enumerate(li_elements):
+                            text = fast_get_text_content(li).strip()
+                            if text and len(text) > 2 and len(text) < 50:  # Valid category name
+                                # Clean category name as per config
+                                cleaned_text = re.sub(r'\d+', '', text).strip()
+                                cleaned_text = re.sub(r'\s+', ' ', cleaned_text)
+                                if cleaned_text:
+                                    category_id = f"cat_{cleaned_text.lower().replace(' ', '_').replace('&', 'and')}"
+                                    category = {
+                                        "id": category_id,
+                                        "name": cleaned_text,
+                                        "description": f"{cleaned_text} items and products",
+                                        "product_count": 0,
+                                        "source": "categories_list",
+                                        "display_order": i
+                                    }
+                                    categories.append(category)
+                except Exception as e:
+                    self.logger.debug(f"Categories list extraction failed: {e}")
+            
+            # Fallback: Extract from h2 elements but filter to only real categories
+            if not categories:
+                try:
+                    h2_elements = fast_find_elements(self.page, 'h2')
+                    for i, element in enumerate(h2_elements):
+                        text = fast_get_text_content(element).strip()
+                        if text and self._is_valid_category_name(text):
+                            # Clean category name as per config
+                            cleaned_text = re.sub(r'\d+', '', text).strip()
+                            cleaned_text = re.sub(r'\s+', ' ', cleaned_text)
+                            if cleaned_text:
+                                category_id = f"cat_{cleaned_text.lower().replace(' ', '_').replace('&', 'and')}"
+                                category = {
+                                    "id": category_id,
+                                    "name": cleaned_text,
+                                    "description": f"{cleaned_text} items and products",
+                                    "product_count": 0,
+                                    "source": "h2_headers",
+                                    "display_order": i
+                                }
+                                categories.append(category)
+                except Exception as e:
+                    self.logger.debug(f"H2 category extraction failed: {e}")
             
             extraction_time = time.time() - start_time
             self.timing_data['content_extraction'] += extraction_time
@@ -219,6 +271,48 @@ class FastFoodyPlaywrightScraper(BaseScraper):
             self.logger.error(f"Error extracting categories: {e}")
             return []
     
+    def _is_valid_category_name(self, text: str) -> bool:
+        """Check if text is likely to be a valid category name for Foody."""
+        if not text or len(text) < 2 or len(text) > 50:
+            return False
+        
+        # Skip common non-category texts
+        skip_patterns = [
+            r'^\d+$',  # Pure numbers
+            r'^(home|about|contact|login|register|account|basket|checkout)$',  # Common page names
+            r'^(click|tap|see|view|show|hide|select|add|remove)$',  # Action words
+            r'^(and|or|with|from|to|of|in|on|at|the|a|an)$',  # Articles/prepositions
+            r'(loading|spinner|skeleton)',  # Loading indicators
+            r'^(categories|menu|items|products)$',  # Generic labels
+        ]
+        
+        text_lower = text.lower()
+        for pattern in skip_patterns:
+            if re.match(pattern, text_lower):
+                return False
+        
+        # For Foody, valid categories typically contain coffee/food related terms
+        # Based on config examples: "Offers", "Cold Coffees", "Hot Coffees"
+        valid_category_patterns = [
+            r'(coffee|drink|tea|beverage)',  # Coffee/drink categories
+            r'(food|snack|dessert|sweet)',   # Food categories
+            r'(hot|cold|iced|fresh)',        # Temperature descriptors
+            r'(offer|special|deal|promo)',   # Promotional categories
+            r'^(breakfast|lunch|dinner)',    # Meal types
+            r'(espresso|latte|cappuccino|americano)',  # Coffee types
+        ]
+        
+        # If it contains valid category keywords, it's probably a category
+        for pattern in valid_category_patterns:
+            if re.search(pattern, text_lower):
+                return True
+        
+        # For simple, short names that look like categories (e.g., "Offers")
+        if re.match(r'^[A-Z][a-zA-Z\s&-]+$', text) and len(text.split()) <= 3:
+            return True
+        
+        return False
+
     def _extract_offer_name_fast(self, element) -> str:
         """
         Fast offer name extraction with robust error handling.
@@ -292,6 +386,9 @@ class FastFoodyPlaywrightScraper(BaseScraper):
                             offer_name = self._extract_offer_name_fast(element)
                             self.logger.debug(f"Extracted offer name: '{offer_name}' for product: '{name}'")
                             
+                            # Fast category extraction for this product
+                            category = self._extract_product_category_fast(element)
+                            
                             product = {
                                 "id": f"foody_prod_{i + 1}",
                                 "name": name,
@@ -301,7 +398,7 @@ class FastFoodyPlaywrightScraper(BaseScraper):
                                 "currency": "EUR",
                                 "discount_percentage": 0.0,
                                 "offer_name": offer_name,  # Add offer name field
-                                "category": "Uncategorized",
+                                "category": category or "General",
                                 "image_url": "",
                                 "availability": True,
                                 "options": []
@@ -403,6 +500,84 @@ class FastFoodyPlaywrightScraper(BaseScraper):
             self.logger.error(f"Error extracting products: {e}")
             return []
     
+    def _extract_product_category_fast(self, title_element) -> str:
+        """
+        Fast product category extraction by finding the first h2 parent element.
+        According to Foody config: "Categories are always the first h2 parent of each product"
+        
+        Args:
+            title_element: Product title element
+            
+        Returns:
+            Category name or empty string
+        """
+        try:
+            # Use JavaScript to traverse DOM and find the first h2 parent
+            category_text = title_element.evaluate("""
+                el => {
+                    try {
+                        // Traverse up the DOM to find the first h2 parent
+                        let current = el;
+                        for (let i = 0; i < 10; i++) {
+                            if (current.parentElement) {
+                                // Look for h2 elements in this parent
+                                const h2Elements = current.parentElement.querySelectorAll('h2');
+                                if (h2Elements.length > 0) {
+                                    // Get the first h2 that appears before this product in document order
+                                    for (const h2 of h2Elements) {
+                                        const text = h2.textContent.trim();
+                                        if (text && text.length < 50 && text.length > 2) {
+                                            // Use the first h2 found as per config
+                                            return text;
+                                        }
+                                    }
+                                }
+                                current = current.parentElement;
+                            } else {
+                                break;
+                            }
+                        }
+                        
+                        // Fallback: find any h2 that comes before this element in the page
+                        const allH2s = document.querySelectorAll('h2');
+                        const elementPosition = el.getBoundingClientRect().top;
+                        
+                        let bestH2 = null;
+                        let bestDistance = Infinity;
+                        
+                        for (const h2 of allH2s) {
+                            const h2Position = h2.getBoundingClientRect().top;
+                            if (h2Position < elementPosition) {
+                                const distance = elementPosition - h2Position;
+                                if (distance < bestDistance) {
+                                    const text = h2.textContent.trim();
+                                    if (text && text.length < 50 && text.length > 2) {
+                                        bestH2 = text;
+                                        bestDistance = distance;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        return bestH2 || '';
+                    } catch (e) {
+                        return '';
+                    }
+                }
+            """)
+            
+            if category_text:
+                # Clean the category text as per config
+                cleaned_category = re.sub(r'\d+', '', category_text).strip()
+                cleaned_category = re.sub(r'\s+', ' ', cleaned_category)
+                return cleaned_category
+            
+            return ""
+            
+        except Exception as e:
+            self.logger.debug(f"Fast category extraction failed: {e}")
+            return ""
+
     def scrape(self) -> Dict[str, Any]:
         """
         Main scraping method with performance tracking.
